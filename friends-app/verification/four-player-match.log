@@ -1,0 +1,13 @@
+Started 0 55026
+Started 1 55279
+Started 2 55470
+Started 3 55494
+0 exit None FRIENDS_STATE mode=host status=Connected level=TeamSelect2 connected=4 slots=4 ducks=4
+1 exit None FRIENDS_STATE mode=join status=Connected level=TeamSelect2 connected=4 slots=4 ducks=4
+2 exit None FRIENDS_STATE mode=join status=Connected level=TeamSelect2 connected=4 slots=4 ducks=4
+3 exit None FRIENDS_STATE mode=join status=Connected level=TeamSelect2 connected=4 slots=4 ducks=4
+0 exit None FRIENDS_STATE mode=host status=Connected level=GameLevel connected=4 slots=4 ducks=4
+1 exit None FRIENDS_STATE mode=join status=Connected level=GameLevel connected=4 slots=4 ducks=4
+2 exit None FRIENDS_STATE mode=join status=Connected level=GameLevel connected=4 slots=4 ducks=4
+3 exit None FRIENDS_STATE mode=join status=Connected level=GameLevel connected=4 slots=4 ducks=4
+FOUR_PLAYER_MATCH_PASS
