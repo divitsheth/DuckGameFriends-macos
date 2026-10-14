@@ -1,14 +1,45 @@
 import Cocoa
 
+// Room codes are eight characters from an alphabet without look-alikes (no 0/O, 1/I).
+let roomAlphabet = Array("23456789ABCDEFGHJKLMNPQRSTUVWXYZ")
+let defaultRelay = "duckfriends-relay.fly.dev:7777"
+
+enum RoomStatus { case open, missing, full, unreachable }
+
+// Asks the relay whether a room exists and has a free slot. Protocol: relay/relay.js.
+func queryRoom(_ code: String, relay: String) -> RoomStatus {
+    let parts = relay.split(separator: ":")
+    guard parts.count == 2 else { return .unreachable }
+    var hints = addrinfo(ai_flags: 0, ai_family: AF_INET, ai_socktype: SOCK_DGRAM, ai_protocol: 0, ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil)
+    var info: UnsafeMutablePointer<addrinfo>?
+    guard getaddrinfo(String(parts[0]), String(parts[1]), &hints, &info) == 0, let addr = info else { return .unreachable }
+    defer { freeaddrinfo(info) }
+    let fd = socket(AF_INET, SOCK_DGRAM, 0)
+    guard fd >= 0 else { return .unreachable }
+    defer { close(fd) }
+    var timeout = timeval(tv_sec: 1, tv_usec: 0)
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+    let query = [UInt8(0x51)] + Array(code.utf8)
+    var reply = [UInt8](repeating: 0, count: 16)
+    for _ in 0..<3 {
+        _ = query.withUnsafeBytes { sendto(fd, $0.baseAddress, query.count, 0, addr.pointee.ai_addr, addr.pointee.ai_addrlen) }
+        let n = recv(fd, &reply, reply.count, 0)
+        if n == 10 && reply[0] == 0x52 && Array(reply[2..<10]) == Array(code.utf8) {
+            return reply[1] == 0 ? .open : reply[1] == 1 ? .missing : .full
+        }
+    }
+    return .unreachable
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
-    let status = NSTextField(wrappingLabelWithString: "Checking Tailscale…")
-    let address = NSTextField(string: "")
+    let status = NSTextField(wrappingLabelWithString: "Host a game, or enter a friend’s room code.")
+    let code = NSTextField(labelWithString: "")
     let room = NSTextField(string: "")
-    var ownIP: String?
     var game: Process?
     let fm = FileManager.default
     let resources = Bundle.main.resourceURL!
+    let relay = ProcessInfo.processInfo.environment["DUCK_FRIENDS_RELAY"] ?? defaultRelay
     var support: URL { fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/DuckGameFriends") }
 
     func label(_ text: String, _ size: CGFloat = 14) -> NSTextField {
@@ -24,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
-        window = NSWindow(contentRect: NSRect(x: 0,y: 0,width: 600,height: 570), styleMask: [.titled,.closable,.miniaturizable], backing: .buffered, defer: false)
+        window = NSWindow(contentRect: NSRect(x: 0,y: 0,width: 600,height: 480), styleMask: [.titled,.closable,.miniaturizable], backing: .buffered, defer: false)
         window.title = "Duck Game Friends"
         let stack = NSStackView()
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 14
@@ -34,22 +65,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stack.addArrangedSubview(label("Duck Game Friends", 30))
         stack.addArrangedSubview(label("A private room for up to four Macs.", 17))
         stack.addArrangedSubview(status)
-        let setup = NSStackView(views: [button("Set up Tailscale", #selector(setupNetwork)),button("Refresh", #selector(refresh)),button("Quick guide", #selector(guide))])
-        setup.spacing = 10; stack.addArrangedSubview(setup)
         stack.addArrangedSubview(label("HOST A ROOM", 12))
-        stack.addArrangedSubview(button("Host four-player game", #selector(host)))
-        address.isEditable = false; address.isSelectable = true; address.placeholderString = "Your room code appears here"
-        address.widthAnchor.constraint(equalToConstant: 530).isActive = true
-        stack.addArrangedSubview(address)
+        stack.addArrangedSubview(button("Host a game", #selector(host)))
+        code.font = .monospacedSystemFont(ofSize: 28, weight: .semibold); code.isSelectable = true
+        stack.addArrangedSubview(code)
         stack.addArrangedSubview(button("Copy room code", #selector(copyRoom)))
         stack.addArrangedSubview(label("JOIN A FRIEND", 12))
-        room.placeholderString = "Paste your friend’s room code"
-        room.stringValue = UserDefaults.standard.string(forKey: "lastRoom") ?? ""
-        room.widthAnchor.constraint(equalToConstant: 530).isActive = true
-        stack.addArrangedSubview(room)
-        stack.addArrangedSubview(button("Join game", #selector(join)))
-        stack.addArrangedSubview(button("Play locally", #selector(local)))
-        stack.addArrangedSubview(label("Everyone must join the same Tailscale network once.\nFive custom maps are included. The host stays online while you play.", 12))
+        room.placeholderString = "Room code, like K7QD-2MXH"
+        room.font = .monospacedSystemFont(ofSize: 16, weight: .regular)
+        room.widthAnchor.constraint(equalToConstant: 260).isActive = true
+        room.target = self; room.action = #selector(join)
+        let joinRow = NSStackView(views: [room, button("Join game", #selector(join))])
+        joinRow.spacing = 10; stack.addArrangedSubview(joinRow)
+        let other = NSStackView(views: [button("Play locally", #selector(local)), button("Quick guide", #selector(guide))])
+        other.spacing = 10; stack.addArrangedSubview(other)
+        stack.addArrangedSubview(label("Everyone joins the lobby before the host starts the match. The host keeps the game open while you play.", 12))
         let menu = NSMenu(); let appMenu = NSMenu(); let item = NSMenuItem()
         menu.addItem(item); item.submenu = appMenu
         appMenu.addItem(withTitle: "Quit Duck Game Friends", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -59,59 +89,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         edit.addItem(withTitle: "Select All",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a")
         NSApp.mainMenu = menu
         window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
-        refresh()
-    }
-    @objc func refresh() {
-        ownIP = nil
-        let binary = "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
-        guard fm.isExecutableFile(atPath: binary) else { status.stringValue = "Step 1: install Tailscale, then sign in."; return }
-        status.stringValue = "Checking your private connection…"
-        DispatchQueue.global().async {
-            let p = Process(); let pipe = Pipe()
-            p.executableURL = URL(fileURLWithPath: binary); p.arguments = ["status", "--json"]
-            p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
-            do {
-                try p.run()
-                DispatchQueue.global().asyncAfter(deadline: .now()+8) { if p.isRunning { p.terminate() } }
-                let bytes = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
-                let json = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any]
-                let ips = json?["TailscaleIPs"] as? [String] ?? []
-                let ip = ips.first(where: { $0.contains(".") })
-                let running = json?["BackendState"] as? String == "Running"
-                DispatchQueue.main.async {
-                    self.ownIP = running ? ip : nil
-                    self.status.stringValue = running && ip != nil ? "Connected to Tailscale · \(ip!)" : "Finish Tailscale sign-in and connect, then click Refresh."
-                }
-            } catch { DispatchQueue.main.async { self.status.stringValue = "Open Tailscale and finish setup, then click Refresh." } }
-        }
-    }
-    @objc func setupNetwork() {
-        if fm.fileExists(atPath: "/Applications/Tailscale.app") { NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Tailscale.app")) }
-        else { NSWorkspace.shared.open(URL(string: "https://tailscale.com/download/mac")!) }
     }
     @objc func guide() { NSWorkspace.shared.open(resources.appendingPathComponent("Quick Start.html")) }
     @objc func copyRoom() {
-        guard !address.stringValue.isEmpty else { return }
-        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(address.stringValue, forType: .string)
+        guard !code.stringValue.isEmpty else { return }
+        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(code.stringValue, forType: .string)
     }
     func error(_ text: String) { let a=NSAlert();a.messageText="Duck Game Friends";a.informativeText=text;a.runModal() }
+    // Checks the relay off the main thread, then reports back on it.
+    func check(_ room: String, then: @escaping (RoomStatus) -> Void) {
+        status.stringValue = "Contacting the game server…"
+        DispatchQueue.global().async { let result = queryRoom(room, relay: self.relay); DispatchQueue.main.async { then(result) } }
+    }
+    let unreachable = "Can’t reach the Duck Game Friends server. Check your internet connection and try again."
     @objc func host() {
-        guard let ip = ownIP else { error("Connect Tailscale first, then click Refresh."); return }
-        let password = UUID().uuidString.replacingOccurrences(of: "-", with: "")
-        let code = "duckfriends://\(ip):1337/\(password)"
-        if launch("host", endpoint: "", password: password) { address.stringValue = code; copyRoom() }
+        let raw = String((0..<8).map { _ in roomAlphabet.randomElement()! })
+        check(raw) { result in
+            guard result == .missing else { self.status.stringValue = ""; self.error(result == .unreachable ? self.unreachable : "Please try hosting again."); return }
+            if self.launch("host", room: raw) {
+                self.code.stringValue = raw.prefix(4) + "-" + raw.suffix(4); self.copyRoom()
+                self.status.stringValue = "Your lobby is opening. The room code is copied. Send it to your friends."
+            }
+        }
     }
     @objc func join() {
-        guard ownIP != nil else { error("Connect Tailscale first, then click Refresh."); return }
-        let code = room.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let u = URLComponents(string: code), u.scheme == "duckfriends", let host = u.host, u.port == 1337, u.query == nil, u.fragment == nil, u.user == nil, u.password == nil else { error("Paste the full room code copied from your friend’s launcher."); return }
-        let parts = host.split(separator: ".")
-        let secret = String(u.path.dropFirst())
-        guard parts.count == 4, parts.allSatisfy({ UInt8($0) != nil }), parts[0] == "100", let second=UInt8(parts[1]), second >= 64, second <= 127, secret.count == 32, secret.allSatisfy({ $0.isHexDigit }) else { error("That room code is invalid. Ask the host to copy it again."); return }
-        if launch("join",endpoint:"\(host):1337",password:secret) { UserDefaults.standard.set(code,forKey:"lastRoom") }
+        let raw = room.stringValue.uppercased().filter { $0.isLetter || $0.isNumber }
+        guard raw.count == 8, raw.allSatisfy({ roomAlphabet.contains($0) }) else { error("Room codes are eight letters and numbers, like K7QD-2MXH. Ask the host to send it again."); return }
+        check(raw) { result in
+            switch result {
+            case .open:
+                if self.launch("join", room: raw) { self.status.stringValue = "Opening the game and joining your friend’s lobby." }
+            case .missing: self.status.stringValue = ""; self.error("No game is open with that code. Check it with the host, and make sure their game is still running.")
+            case .full: self.status.stringValue = ""; self.error("That room already has four players.")
+            case .unreachable: self.status.stringValue = ""; self.error(self.unreachable)
+            }
+        }
     }
-    @objc func local() { _ = launch("local",endpoint:"",password:"") }
-    func launch(_ mode: String, endpoint: String, password: String) -> Bool {
+    @objc func local() { if launch("local", room: "") { status.stringValue = "Opening local play." } }
+    func launch(_ mode: String, room: String) -> Bool {
         if let game, game.isRunning { error("A game is already running. Quit that game before hosting or joining another."); return false }
         do {
             try fm.createDirectory(at: support, withIntermediateDirectories: true)
@@ -138,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             env["MONO_PATH"]=runtime.appendingPathComponent("OSX-Linux-x64").path
             env["DYLD_FALLBACK_LIBRARY_PATH"]=runtime.path+":"+mono.appendingPathComponent("lib").path
             env["DGR_SKIP_STEAMWORKS_COPY"]="1"
-            env["DUCK_FRIENDS_ADDRESS"]=endpoint;env["DUCK_FRIENDS_PASSWORD"]=password
+            env["DUCK_FRIENDS_ROOM"]=room;env["DUCK_FRIENDS_RELAY"]=relay
             env.removeValue(forKey:"DUCK_FRIENDS_TEST")
             p.environment=env
             let logs=fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/DuckGameFriends")
@@ -153,7 +168,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             try p.run();game=p
-            status.stringValue = mode == "host" ? "Opening your lobby. Share the copied room code with your friends." : mode == "join" ? "Opening the game and joining your friend’s lobby." : "Opening local play."
             return true
         } catch { self.error("Could not start the game: \(error.localizedDescription)"); return false }
     }

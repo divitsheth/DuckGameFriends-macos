@@ -1,0 +1,5 @@
+{
+  "name": "duckfriends-relay",
+  "private": true,
+  "scripts": { "start": "node relay.js", "test": "node --test" }
+}

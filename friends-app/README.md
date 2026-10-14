@@ -1,13 +1,25 @@
-# Duck Game Friends 1.0.0
+# Duck Game Friends 1.1.0
 
 Private 2–4 player Duck Game on Apple Silicon Macs running macOS 15 or newer.
 
-Deliverable: `~/Downloads/DuckGameFriends-1.0.0-AppleSilicon.dmg`.
+Deliverable: `~/Downloads/DuckGameFriends-1.1.0-AppleSilicon.dmg`.
 Installed app: `/Applications/Duck Game Friends.app`.
 
-The image includes the game, Mono 6.14.1, five favorite-map remixes, a native Host/Join launcher, the official signed Tailscale 1.102.4 installer, and Quick Start.html. Each player needs their own legitimate game copy and a Tailscale account connected to the same personal network. The host sends the generated room code privately; it includes the room password. No router forwarding is needed. The host must keep the game running. Join before starting a round; mid-game joining is disabled.
+The image includes the game, Mono 6.14.1, five favorite-map remixes, a native Host/Join launcher, and Quick Start.html. Each player needs their own legitimate game copy. The host sends an eight-character room code; it is both the relay room and the lobby password. No VPN, accounts, or router forwarding are needed. The host must keep the game running. Join before starting a round; mid-game joining is disabled.
+
+## Online play
+
+Duck Game's LAN mode connects every player to every other player, not only to the host. Rather than requiring a shared VPN, every game sends its packets to the room relay, which forwards them by slot.
+
+- `relay/relay.js` is a dependency-free Node UDP server. A room has four slots; slot 0 is the host. It forwards packets between slots, answers the launcher's room checks, and closes a room when the host goes quiet for 20 seconds. Rooms exist only in memory. Deployed on Fly.io as `duckfriends-relay` (`duckfriends-relay.fly.dev:7777`, dedicated IPv4 for UDP); deploy with `fly deploy` from `relay/`; test with `node --test` from `relay/`.
+- `NCRelay.cs` subclasses the game's `NCBasic` LAN transport inside the game process. Each slot has a virtual endpoint (`10.77.0.1` host, `.2`–`.4` guests), so the addresses the host shares with guests resolve to relay slots on every Mac. The original game assembly is unchanged; `FriendsBootstrap.cs` installs the transport before hosting or joining.
+- `Launcher.swift` generates room codes and asks the relay whether a room exists and has space before opening the game. `DUCK_FRIENDS_RELAY=host:port` overrides the relay for testing.
 
 ## Verification
+
+- 1.1.0: four independent game processes from the installed app seated in one relay room on the deployed Fly relay, connected to each other, and completed a forced match start (`verification/relay-four-player-match.log`). The launcher's room check reported open, full, missing, and unreachable rooms correctly. Relay protocol tests: `node --test` in `relay/`.
+
+Earlier 1.0.0 LAN verification:
 
 - Four independent real game processes using the bundled Mono runtime connected in one lobby and entered a GameLevel with four connected players and four ducks. Repeated after Developer ID signing; all remained connected for a further ten seconds.
 - An incorrect room secret was rejected: the joining client reached ConnectionError with zero connections while the host remained alone.
@@ -21,14 +33,14 @@ Evidence is retained under `verification/`.
 
 ## What remains for the first remote session
 
-No second physical Mac or internet-latency session has been tested. Use a personal Tailscale network, or obtain your network administrator's approval. Invite friends to the same network, then test their connection to the host before playing.
+All relay tests ran on one Mac. Packets crossed the internet to the relay and back, but no session between separate homes has been played yet. Relayed packets add the round trip to the relay (Virginia) to each hop.
 
-The custom game app is Developer ID signed but **not Apple-notarized**. Apple Gatekeeper reports `Unnotarized Developer ID`. Follow the first-launch Open Anyway steps in the included guide; never disable Gatekeeper globally. The included official Tailscale installer is notarized.
+The custom game app is Developer ID signed but **not Apple-notarized**. Apple Gatekeeper reports `Unnotarized Developer ID`. Follow the first-launch Open Anyway steps in the included guide; never disable Gatekeeper globally.
 
 ## Implementation
 
-`FriendsBootstrap.cs` enters the original LAN host/join flow with four slots and a generated room password. `Launcher.swift` validates room codes, checks Tailscale state, installs maps without overwriting existing files, and starts the bundled Mono engine. Logs are in `~/Library/Logs/DuckGameFriends/game.log`.
+`FriendsBootstrap.cs` installs the relay transport and enters the original LAN host/join flow with four slots, using the room code as the lobby password. `Launcher.swift` creates and validates room codes, installs maps without overwriting existing files, and starts the bundled Mono engine. Logs are in `~/Library/Logs/DuckGameFriends/game.log`.
 
 Two upstream macOS LAN bugs are fixed in source and applied to the pinned release using `PatchRelease.cs`: Mono does not implement UDP listener enumeration, so clients bind an OS-assigned ephemeral port; the Steam-only mid-game metadata helper is skipped for LAN sessions. The installed original DuckGameRebuilt app is unchanged.
 
-`build_bundle.py` prepares the bundle from the installed v1.4.7-macos.8 release, the official Mono Sonoma bottle, and official Homebrew Sequoia dependency bottles. Build inputs are currently staged under `/tmp/duckfriends`; this is a local packaging workflow, not portable CI. `package_dmg.py` signs with the local Developer ID and produces the image. Keep build output and runtime caches out of Git.
+`build_bundle.py` prepares the bundle from the installed v1.4.7-macos.8 release, the official Mono Sonoma bottle, and official Homebrew Sequoia dependency bottles. Build inputs are currently staged under `/tmp/duckfriends`; this is a local packaging workflow, not portable CI. `package_dmg.py` signs with the local Developer ID and produces the image. When those staged inputs are unavailable, `update_bundle.py` rebuilds only the bootstrap, launcher, guide, and version on top of a verified release app; 1.1.0 was built this way from the 1.0.0 app. Keep build output and runtime caches out of Git.

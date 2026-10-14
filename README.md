@@ -2,7 +2,7 @@
 
 [**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
 
-Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native launcher for private 2–4 player games over Tailscale.
+Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native launcher for private 2–4 player online games using short room codes.
 
 - Full original game and original maps, plus five custom remix maps.
 - Host a room, copy its room code, and join from another Mac.
@@ -13,10 +13,9 @@ Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native la
 
 1. Download the DMG from Releases and drag **Duck Game Friends** into Applications.
 2. Open it. The app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway.
-3. For remote play, install the included official Tailscale installer and connect everyone to the same Tailscale network.
-4. One person selects **Host**, then privately shares the room code. Friends select **Join**. Everyone must join before starting the match.
+3. One person clicks **Host a game** and sends the room code (like `K7QD-2MXH`) to friends. Friends type it and click **Join game**. Everyone must join before starting the match.
 
-Each player should own Duck Game. Keep room codes private: they contain the room password.
+No VPN, accounts, or router setup: games connect through a small [room relay](relay/). Each player should own Duck Game. Keep room codes private: anyone with the code can join while a slot is free.
 
 See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-app/README.md).
 
@@ -26,9 +25,10 @@ See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-
 - [Five final remix maps and previews](favorite-remix-pack/)
 - [Original map catalog](map-catalog/)
 - [Earlier map drafts](custom-map-pack/) — retained as source material; not the five maps bundled in the release.
+- [Room relay server](relay/) and the in-game relay transport, [`NCRelay.cs`](friends-app/NCRelay.cs).
 - macOS LAN fixes in `DuckNetwork.cs` and `NCBasic.cs`.
 
-Four separate local game processes were tested through a four-player match, and an incorrect room password was rejected. A match across separate physical Macs over the internet has **not yet been verified**.
+Four separate game processes completed a four-player match through the deployed internet relay. A match between separate physical Macs in different homes has **not yet been verified**.
 
 ## Credits and source
 
