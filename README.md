@@ -2,7 +2,7 @@
 
 [**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
 
-Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native launcher for private 2–4 player online games using short room codes.
+Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with an in-game menu for private 2–4 player online games using short room codes.
 
 - Full original game and original maps, plus five custom remix maps.
 - Host a room, copy its room code, and join from another Mac.
@@ -13,7 +13,7 @@ Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native la
 
 1. Download the DMG from Releases and drag **Duck Game Friends** into Applications.
 2. Open it. The app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway.
-3. One person clicks **Host a game** and sends the room code (like `K7QD-2MXH`) to friends. Friends type it and click **Join game**. Everyone must join before starting the match.
+3. The game opens on the Duck Game Friends menu (keyboard or controller). One person picks **HOST A ROOM** and sends the room code (like `K7QD-2MXH`, shown in the lobby and already copied) to friends. Friends pick **JOIN A ROOM** and type or paste it. Everyone must join before starting the match.
 
 No VPN, accounts, or router setup: games connect through a small [room relay](relay/). Each player should own Duck Game. Keep room codes private: anyone with the code can join while a slot is free.
 
@@ -21,7 +21,7 @@ See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-
 
 ## Changes and maps
 
-- [Native launcher and release patcher](friends-app/)
+- [In-game menu, launcher and release patcher](friends-app/)
 - [Five final remix maps and previews](favorite-remix-pack/)
 - [Original map catalog](map-catalog/)
 - [Earlier map drafts](custom-map-pack/) — retained as source material; not the five maps bundled in the release.

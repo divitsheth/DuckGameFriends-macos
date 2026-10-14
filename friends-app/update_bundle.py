@@ -16,7 +16,7 @@ OUT.mkdir(exist_ok=True)
 shutil.copytree(base,APP,symlinks=True)
 mono=RES/'Runtime'
 env={'MONO_CFG_DIR':str(mono/'etc'),'MONO_GAC_PREFIX':str(mono),'PATH':'/usr/bin:/bin'}
-print(subprocess.check_output([str(mono/'bin/mono-sgen'),str(mono/'lib/mono/4.5/mcs.exe'),'-out:'+str(RES/'game/FriendsBootstrap.exe'),'-r:'+str(RES/'game/DuckGame.exe'),'-r:'+str(RES/'game/FNA.dll'),str(ROOT/'friends-app/FriendsBootstrap.cs'),str(ROOT/'friends-app/NCRelay.cs')],env=env,stderr=subprocess.STDOUT,text=True,errors='replace'))
+print(subprocess.check_output([str(mono/'bin/mono-sgen'),str(mono/'lib/mono/4.5/mcs.exe'),'-out:'+str(RES/'game/FriendsBootstrap.exe'),'-r:'+str(RES/'game/DuckGame.exe'),'-r:'+str(RES/'game/FNA.dll'),str(ROOT/'friends-app/FriendsBootstrap.cs'),str(ROOT/'friends-app/NCRelay.cs'),str(ROOT/'friends-app/FriendsMenu.cs')],env=env,stderr=subprocess.STDOUT,text=True,errors='replace'))
 print(run('swiftc','-O','-target','arm64-apple-macos14.0',ROOT/'friends-app/Launcher.swift','-o',APP/'Contents/MacOS/DuckGameFriends'))
 info=plistlib.loads((APP/'Contents/Info.plist').read_bytes())
 info.update({'CFBundleShortVersionString':version,'CFBundleVersion':build})
