@@ -20,7 +20,7 @@ shutil.copytree(ROOT/'favorite-remix-pack/maps',RES/'Maps')
 shutil.copy2('/Applications/DuckGameRebuilt.app/Contents/Resources/AppIcon.icns',RES/'AppIcon.icns')
 print(run('mcs','-out:/tmp/duckfriends/tools/PatchRelease.exe','-r:/tmp/duckfriends/tools/Mono.Cecil.dll',ROOT/'friends-app/PatchRelease.cs'))
 print(run('mono','/tmp/duckfriends/tools/PatchRelease.exe',ORIGINAL/'DuckGame.exe',RES/'game/DuckGame.exe'))
-print(run('mcs','-out:'+str(RES/'game/FriendsBootstrap.exe'),'-r:'+str(RES/'game/DuckGame.exe'),'-r:'+str(RES/'game/FNA.dll'),ROOT/'friends-app/FriendsBootstrap.cs'))
+print(run('mcs','-out:'+str(RES/'game/FriendsBootstrap.exe'),'-r:'+str(RES/'game/DuckGame.exe'),'-r:'+str(RES/'game/FNA.dll'),ROOT/'friends-app/FriendsBootstrap.cs',ROOT/'friends-app/NCRelay.cs'))
 print(run('swiftc','-O','-target','arm64-apple-macos14.0',ROOT/'friends-app/Launcher.swift','-o',APP/'Contents/MacOS/DuckGameFriends'))
 # Native dependencies come from official Homebrew bottles for macOS 14, rather
 # than linking to libraries that happen to exist on the builder's Mac.
@@ -95,7 +95,7 @@ for p in all_macho:
  if version and tuple(map(int,version[1].split('.')[:2]))>(15,0):
   raise RuntimeError('Library requires a newer OS: '+str(p)+' '+version[1])
  run('codesign','--force','--sign','-',p)
-info={'CFBundleName':'Duck Game Friends','CFBundleDisplayName':'Duck Game Friends','CFBundleIdentifier':'com.divitsheth.duckgamefriends','CFBundleExecutable':'DuckGameFriends','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.0.0','CFBundleVersion':'1','CFBundleIconFile':'AppIcon','LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True,'NSLocalNetworkUsageDescription':'Connect to your friends for private Duck Game matches.'}
+info={'CFBundleName':'Duck Game Friends','CFBundleDisplayName':'Duck Game Friends','CFBundleIdentifier':'com.divitsheth.duckgamefriends','CFBundleExecutable':'DuckGameFriends','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.1.0','CFBundleVersion':'2','CFBundleIconFile':'AppIcon','LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True,'NSLocalNetworkUsageDescription':'Connect to your friends for private Duck Game matches.'}
 (APP/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 version=hashlib.sha256((RES/'game/DuckGame.exe').read_bytes()+(RES/'game/FriendsBootstrap.exe').read_bytes()).hexdigest()[:12]
 (RES/'runtime-version.txt').write_text(version)

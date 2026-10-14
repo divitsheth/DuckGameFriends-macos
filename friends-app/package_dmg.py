@@ -21,8 +21,8 @@ stage.mkdir()
 shutil.copytree(APP,stage/APP.name,symlinks=True)
 (stage/'Applications').symlink_to('/Applications')
 shutil.copy2(ROOT/'Quick Start.html',stage/'Quick Start.html')
-shutil.copy2('/tmp/duckfriends/Tailscale.pkg',stage/'Install Tailscale.pkg')
-out=Path.home()/'Downloads/DuckGameFriends-1.0.0-AppleSilicon.dmg'
+version=plistlib.loads((APP/'Contents/Info.plist').read_bytes())['CFBundleShortVersionString']
+out=Path.home()/('Downloads/DuckGameFriends-'+version+'-AppleSilicon.dmg')
 run('hdiutil','create','-volname','Duck Game Friends','-srcfolder',stage,'-ov','-format','UDZO',out)
 run('codesign','--sign',identity,'--timestamp',out)
 run('hdiutil','verify',out)
