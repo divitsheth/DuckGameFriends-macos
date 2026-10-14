@@ -1,0 +1,64 @@
+# <img src="https://github.com/user-attachments/assets/1a6306e6-0fbb-4c3f-b1bd-1a96070efdd3" height="32"> Duck Game Rebuilt (macOS Fork)
+
+This is a fork of [Duck Game Rebuilt](https://github.com/TheFlyingFoool/DuckGameRebuilt) that adds macOS compatibility, including build scripts, app bundling, code signing, notarization, and CI for both Apple Silicon (arm64) and Intel (x64).
+
+Duck Game Rebuilt is a decompilation of Duck Game with massive improvements to performance, compatibility, and quality of life features.
+
+Join [our Discord server](https://discord.gg/XkAjt744hz) if you have any questions, need help, or want to report bugs
+
+Notable wiki pages:
+* [Frequently Asked Questions](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/FAQ)
+* [A list of all improvements to Duck Game Rebuilt](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Changelog)
+* [Hardware and software compatibility](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Architectures-and-Devices)
+
+## Installation 📥
+
+For **Windows** users, subscribe to [the steam workshop mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3132351890).
+
+For **Linux** users, follow the [Linux Installation Guide](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Linux-Installation-Guide)
+
+For **macOS** users, download the DMG from the [latest release](https://github.com/philipp-eisen/DuckGameRebuilt-macos/releases/latest) and copy the game to your Applications folder.
+
+## For Developers 🚧
+Welcome to the repo, enjoy your stay, please unfuck the code. thanks
+
+Note: your IDE will scream at you with 200+ warnings when building, which is normal
+
+### Building on Windows
+
+* Make sure you have [.NET Framework 4.8](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48) installed and have a functioning IDE (like [Visual Studio](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2022)) for C#
+* Make sure the Startup Program leads to the exe produced in the ./bin folder after compiling
+* Restore the NuGet packages (most IDEs automatically do this anyway)
+* Build the solution with `Ctrl+Shift+B`
+* Run the game in Debug Mode with `F5` (will crash unless Steam is running)
+  * Make sure the currently selected project is DuckGame and not CrashWindow/FNA/anything else
+
+### Building on GNU/Linux
+
+* Add the [official monoproject repos](https://www.mono-project.com/download/stable/) (unless you're firebreak appearantly)
+* Install the `mono-complete` package<!-- * Install the `msbuild` package ..I think msbuild is a dependency of mono-complete -->
+* `cd` to the solution's directory
+* Restore the NuGet packages if your IDE hasn't
+  * `nuget restore`
+* Add missing DLL dependencies from Windows located in ./DuckGame/lib/
+  * `mkdir ./bin/`
+  * `cp ./DuckGame/lib/* ./bin/`
+* Build the solution
+  * `msbuild -m -p:Configuration=Debug`
+* Run the game (will crash unless Steam is currently running)
+  * `mono ./bin/DuckGame.exe`
+
+### Building on macOS (Mono)
+
+* Install build dependencies with Homebrew
+  * `brew install mono mono-libgdiplus nuget cmake sdl2`
+* Build the game and native macOS libraries
+  * `./scripts/build-macos.sh Release`
+* Run the game from the build output
+  * `./bin/DuckGame.sh -nosteam`
+  * Omit `-nosteam` when Steam is running and `steam_api` is available
+* Package app bundle and DMG (shell script)
+  * `./scripts/package-macos.sh --configuration Release --dmg`
+* Sign in parallel, package, and notarize (shell pipeline)
+  * `./scripts/release-macos.sh --identity "Developer ID Application: Your Name (TEAM_ID)"`
+  * Set up notary credentials once: `xcrun notarytool store-credentials "DuckGameRebuilt-macos" --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"`

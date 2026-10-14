@@ -1,0 +1,39 @@
+01 Treetop Crossfire.lev
+RUNTIME_CHECK level=DuckGameTestArea objects=184 ducks=4
+DUCK x=128 y=121 dead=False
+DUCK x=480 y=121 dead=False
+DUCK x=128 y=57 dead=False
+DUCK x=480 y=57 dead=False
+RUNTIME_PASS
+
+02 Office Breakout.lev
+RUNTIME_CHECK level=DuckGameTestArea objects=263 ducks=4
+DUCK x=144 y=137 dead=False
+DUCK x=480 y=281 dead=False
+DUCK x=160 y=281 dead=False
+DUCK x=496 y=137 dead=False
+RUNTIME_PASS
+
+03 Foundry Shortcuts.lev
+RUNTIME_CHECK level=DuckGameTestArea objects=272 ducks=4
+DUCK x=-80 y=121 dead=False
+DUCK x=160 y=297 dead=False
+DUCK x=-112 y=297 dead=False
+DUCK x=128 y=121 dead=False
+RUNTIME_PASS
+
+04 Snowdrop Scramble.lev
+RUNTIME_CHECK level=DuckGameTestArea objects=327 ducks=4
+DUCK x=288 y=153 dead=False
+DUCK x=320 y=153 dead=False
+DUCK x=368 y=153 dead=False
+DUCK x=240 y=153 dead=False
+RUNTIME_PASS
+
+05 Pocket Reactor.lev
+RUNTIME_CHECK level=DuckGameTestArea objects=65 ducks=4
+DUCK x=272 y=105 dead=False
+DUCK x=368 y=105 dead=False
+DUCK x=368 y=153 dead=False
+DUCK x=272 y=153 dead=False
+RUNTIME_PASS

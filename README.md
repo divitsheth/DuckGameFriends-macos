@@ -1,64 +1,37 @@
-# <img src="https://github.com/user-attachments/assets/1a6306e6-0fbb-4c3f-b1bd-1a96070efdd3" height="32"> Duck Game Rebuilt (macOS Fork)
+# Duck Game Friends for macOS
 
-This is a fork of [Duck Game Rebuilt](https://github.com/TheFlyingFoool/DuckGameRebuilt) that adds macOS compatibility, including build scripts, app bundling, code signing, notarization, and CI for both Apple Silicon (arm64) and Intel (x64).
+[**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
 
-Duck Game Rebuilt is a decompilation of Duck Game with massive improvements to performance, compatibility, and quality of life features.
+Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with a native launcher for private 2–4 player games over Tailscale.
 
-Join [our Discord server](https://discord.gg/XkAjt744hz) if you have any questions, need help, or want to report bugs
+- Full original game and original maps, plus five custom remix maps.
+- Host a room, copy its room code, and join from another Mac.
+- Bundled Mono runtime; no Homebrew setup needed to play.
+- Local play and the original challenge content are included. Arcade requires a named player profile, rather than a guest profile.
 
-Notable wiki pages:
-* [Frequently Asked Questions](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/FAQ)
-* [A list of all improvements to Duck Game Rebuilt](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Changelog)
-* [Hardware and software compatibility](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Architectures-and-Devices)
+## Install and play
 
-## Installation 📥
+1. Download the DMG from Releases and drag **Duck Game Friends** into Applications.
+2. Open it. The app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway.
+3. For remote play, install the included official Tailscale installer and connect everyone to the same Tailscale network.
+4. One person selects **Host**, then privately shares the room code. Friends select **Join**. Everyone must join before starting the match.
 
-For **Windows** users, subscribe to [the steam workshop mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3132351890).
+Each player should own Duck Game. Keep room codes private: they contain the room password.
 
-For **Linux** users, follow the [Linux Installation Guide](https://github.com/TheFlyingFoool/DuckGameRebuilt/wiki/Linux-Installation-Guide)
+See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-app/README.md).
 
-For **macOS** users, download the DMG from the [latest release](https://github.com/philipp-eisen/DuckGameRebuilt-macos/releases/latest) and copy the game to your Applications folder.
+## Changes and maps
 
-## For Developers 🚧
-Welcome to the repo, enjoy your stay, please unfuck the code. thanks
+- [Native launcher and release patcher](friends-app/)
+- [Five final remix maps and previews](favorite-remix-pack/)
+- [Original map catalog](map-catalog/)
+- [Earlier map drafts](custom-map-pack/) — retained as source material; not the five maps bundled in the release.
+- macOS LAN fixes in `DuckNetwork.cs` and `NCBasic.cs`.
 
-Note: your IDE will scream at you with 200+ warnings when building, which is normal
+Four separate local game processes were tested through a four-player match, and an incorrect room password was rejected. A match across separate physical Macs over the internet has **not yet been verified**.
 
-### Building on Windows
+## Credits and source
 
-* Make sure you have [.NET Framework 4.8](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48) installed and have a functioning IDE (like [Visual Studio](https://docs.microsoft.com/en-us/visualstudio/install/install-visual-studio?view=vs-2022)) for C#
-* Make sure the Startup Program leads to the exe produced in the ./bin folder after compiling
-* Restore the NuGet packages (most IDEs automatically do this anyway)
-* Build the solution with `Ctrl+Shift+B`
-* Run the game in Debug Mode with `F5` (will crash unless Steam is running)
-  * Make sure the currently selected project is DuckGame and not CrashWindow/FNA/anything else
+Based on [philipp-eisen/DuckGameRebuilt-macos](https://github.com/philipp-eisen/DuckGameRebuilt-macos), itself based on [DuckGameRebuilt](https://github.com/TheFlyingFoool/DuckGameRebuilt). Duck Game and third-party components belong to their respective authors; existing notices are retained. See [upstream documentation](README-upstream.md).
 
-### Building on GNU/Linux
-
-* Add the [official monoproject repos](https://www.mono-project.com/download/stable/) (unless you're firebreak appearantly)
-* Install the `mono-complete` package<!-- * Install the `msbuild` package ..I think msbuild is a dependency of mono-complete -->
-* `cd` to the solution's directory
-* Restore the NuGet packages if your IDE hasn't
-  * `nuget restore`
-* Add missing DLL dependencies from Windows located in ./DuckGame/lib/
-  * `mkdir ./bin/`
-  * `cp ./DuckGame/lib/* ./bin/`
-* Build the solution
-  * `msbuild -m -p:Configuration=Debug`
-* Run the game (will crash unless Steam is currently running)
-  * `mono ./bin/DuckGame.exe`
-
-### Building on macOS (Mono)
-
-* Install build dependencies with Homebrew
-  * `brew install mono mono-libgdiplus nuget cmake sdl2`
-* Build the game and native macOS libraries
-  * `./scripts/build-macos.sh Release`
-* Run the game from the build output
-  * `./bin/DuckGame.sh -nosteam`
-  * Omit `-nosteam` when Steam is running and `steam_api` is available
-* Package app bundle and DMG (shell script)
-  * `./scripts/package-macos.sh --configuration Release --dmg`
-* Sign in parallel, package, and notarize (shell pipeline)
-  * `./scripts/release-macos.sh --identity "Developer ID Application: Your Name (TEAM_ID)"`
-  * Set up notary credentials once: `xcrun notarytool store-credentials "DuckGameRebuilt-macos" --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"`
+The Friends bundle was prepared from upstream release **v1.4.7-macos.8**, with targeted release patches. The build scripts currently document a local staging workflow, not a self-contained CI build. The upstream build workflow is manual-only here because it packages a different app and requires its own signing setup.

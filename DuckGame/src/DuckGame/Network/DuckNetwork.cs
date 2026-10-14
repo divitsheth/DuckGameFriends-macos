@@ -2051,6 +2051,9 @@ namespace DuckGame
         public static int cycle;
         public static void MidGameJoiningLogic()
         {
+            // This helper advertises Steam lobby metadata; LAN has no Steam lobby.
+            if (Network.lanMode)
+                return;
             if (Network.isActive && !Network.isFakeActive)
             {
                 if (Network.isServer)
