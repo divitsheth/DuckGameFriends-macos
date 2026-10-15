@@ -25,7 +25,7 @@ See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-
 - [Five final remix maps and previews](favorite-remix-pack/)
 - [Original map catalog](map-catalog/)
 - [Earlier map drafts](custom-map-pack/) — retained as source material; not the five maps bundled in the release.
-- [Room relay server](relay/) and the in-game relay transport, [`NCRelay.cs`](friends-app/NCRelay.cs).
+- [Room relay server](relay/) and the in-game relay transport, [`NCRelay.cs`](friends-app/NCRelay.cs). The relay records each match's connection quality (ping, lost packets, frame rate; no IP addresses); [`relay/matches.py`](relay/matches.py) reports on recent matches.
 - macOS LAN fixes in `DuckNetwork.cs` and `NCBasic.cs`.
 
 Eight separate game processes completed an eight-player match through the deployed internet relay, and two players on separate Macs have played through it.

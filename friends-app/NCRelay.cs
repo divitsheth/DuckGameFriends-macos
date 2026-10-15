@@ -26,7 +26,8 @@ class NCRelay : NCBasic {
  readonly byte[] nonce=new byte[8];
  byte[] token;
  int slot=-1;
- DateTime lastJoin=DateTime.MinValue, lastKeepalive=DateTime.MinValue;
+ DateTime lastJoin=DateTime.MinValue, lastKeepalive=DateTime.MinValue, lastFrame=DateTime.MinValue;
+ double worstFrameMs; // the longest wait between network updates since the last report
  public NCRelay(Network c,int networkIndex):base(c,networkIndex) {
   using(var rng=RandomNumberGenerator.Create())rng.GetBytes(nonce);
  }
@@ -50,6 +51,8 @@ class NCRelay : NCBasic {
  protected override void ReceivePackets(Queue<NCBasicPacket> packets) {
   if(_socket==null)return;
   var now=DateTime.UtcNow;
+  if(lastFrame!=DateTime.MinValue)worstFrameMs=Math.Max(worstFrameMs,(now-lastFrame).TotalMilliseconds);
+  lastFrame=now;
   try {
    if(token==null && failure==null && (now-lastJoin).TotalMilliseconds>500) {
     lastJoin=now;
@@ -73,6 +76,12 @@ class NCRelay : NCBasic {
      var data=new byte[msg.Length-2];
      Buffer.BlockCopy(msg,2,data,0,data.Length);
      packets.Enqueue(new NCBasicPacket{data=data,sender=SlotEndPoint(msg[1])});
+    } else if(msg[0]==0x50 && msg.Length==5 && token!=null) {
+     var report=System.Text.Encoding.UTF8.GetBytes(Report());
+     var pong=new byte[13+report.Length];
+     pong[0]=0x4F; Buffer.BlockCopy(token,0,pong,1,8); Buffer.BlockCopy(msg,1,pong,9,4);
+     Buffer.BlockCopy(report,0,pong,13,report.Length);
+     _socket.Send(pong,pong.Length,relay);
     } else if(msg[0]==0x41 && msg.Length==18 && token==null && msg.Skip(10).SequenceEqual(nonce)) {
      slot=msg[1]; token=msg.Skip(2).Take(8).ToArray();
      Console.WriteLine("FRIENDS_RELAY_SEATED room="+room+" slot="+slot);
@@ -84,5 +93,20 @@ class NCRelay : NCBasic {
   } catch(SocketException e) {
    Console.WriteLine("FRIENDS_RELAY_SOCKET "+e.SocketErrorCode);
   }
+ }
+ // How this game sees the match, sent with each answer to the relay's ping (see relay/relay.js):
+ // its name, its updates per second and longest stall, and the game's own ping (averaged over its last 32) and lost packets per player.
+ string Report() {
+  try {
+   var conns=string.Join(",",Network.activeNetwork.core.connections.Select(c=>{
+    int s=c.data is IPEndPoint e?SlotOf(e):-1; var m=c.manager;
+    return "{\"slot\":"+s+",\"ping\":"+(int)(m.ping*1000)+",\"peak\":"+(int)(m.pingPeak*1000)+",\"lost\":"+m.losses+",\"sent\":"+m.sent+"}";
+   }));
+   var name=new string((DuckNetwork.localProfile?.name??"").Where(ch=>ch>=' '&&ch!='"'&&ch!='\\').Take(32).ToArray());
+   var os=Environment.OSVersion.Platform==PlatformID.Win32NT?"windows":"mac";
+   var r="{\"name\":\""+name+"\",\"os\":\""+os+"\",\"slot\":"+slot+",\"fps\":"+Graphics.fps+",\"worstFrame\":"+(int)worstFrameMs+",\"conns\":["+conns+"]}";
+   worstFrameMs=0;
+   return r;
+  } catch(Exception e) { return "{\"error\":\""+e.GetType().Name+"\"}"; }
  }
 }
