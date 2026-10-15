@@ -20,9 +20,10 @@ jobs:
           Expand-Archive sdl.zip -DestinationPath .
           $sdl = "$PWD/SDL2-2.32.10"
           foreach ($name in "FNA3D", "FAudio") {
-            cmake -S "FNA/lib/$name" -B "build/$name" -A Win32 -DBUILD_SHARED_LIBS=ON `
-              -DSDL2_INCLUDE_DIRS="$sdl/include" -DSDL2_LIBRARIES="$sdl/lib/x86/SDL2.lib" `
-              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+            # Quoted, or PowerShell splits arguments such as =3.5.
+            cmake -S "FNA/lib/$name" -B "build/$name" -A Win32 "-DBUILD_SHARED_LIBS=ON" `
+              "-DSDL2_INCLUDE_DIRS=$sdl/include" "-DSDL2_LIBRARIES=$sdl/lib/x86/SDL2.lib" `
+              "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW" "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
             if ($LASTEXITCODE) { throw "configure $name failed" }
             cmake --build "build/$name" --config Release
             if ($LASTEXITCODE) { throw "build $name failed" }
