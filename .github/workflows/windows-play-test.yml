@@ -1,6 +1,7 @@
 # Plays the Windows build of Duck Game Friends on a GitHub Windows machine,
 # through the live room relay.
 #   self  this machine hosts a room, a second copy joins, and they start a match
+#   menu  like self, but through the Friends menu: the joiner reads the host's code from the clipboard
 #   host  this machine hosts `room` so another computer can join it
 #   join  this machine joins `room`, hosted elsewhere
 name: Windows play test
@@ -12,7 +13,7 @@ on:
         required: true
       mode:
         type: choice
-        options: [self, host, join]
+        options: [self, menu, host, join]
         default: self
       room:
         description: Eight-letter room code for host or join
@@ -38,8 +39,9 @@ jobs:
       - name: Play
         run: |
           $game = Join-Path $PWD "Duck Game Friends"
-          function Start-Copy($i, $how, $room, $extra) {
+          function Start-Copy($i, $how, $room, $extra, $menu) {
             $env:DUCK_FRIENDS_TEST = "1"
+            $env:DUCK_FRIENDS_TEST_MENU = $menu
             $env:DUCK_FRIENDS_ROOM = $room
             $env:DUCK_FRIENDS_TEST_MATCH = $extra
             $env:DUCK_FRIENDS_TEST_PLAYERS = "2"
@@ -51,9 +53,11 @@ jobs:
           if ($mode -eq "self") { $room = -join ((1..8) | ForEach-Object { "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"[(Get-Random -Maximum 32)] }) }
           Write-Output "Room $room"
           $copies = @()
-          if ($mode -eq "join") { $copies += Start-Copy 0 "join" $room "" }
-          else { $copies += Start-Copy 0 "host" $room "1" }
-          if ($mode -eq "self") { Start-Sleep 30; $copies += Start-Copy 1 "join" $room "" }
+          if ($mode -eq "join") { $copies += Start-Copy 0 "join" $room "" "" }
+          elseif ($mode -eq "menu") { $copies += Start-Copy 0 "menu" "" "1" "host" }
+          else { $copies += Start-Copy 0 "host" $room "1" "" }
+          if ($mode -eq "self") { Start-Sleep 30; $copies += Start-Copy 1 "join" $room "" "" }
+          if ($mode -eq "menu") { Start-Sleep 45; $copies += Start-Copy 1 "menu" "" "" "join" }
           Start-Sleep ([int]"${{ inputs.seconds }}")
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -67,7 +71,7 @@ jobs:
             Get-Content "copy$i.log", "copy$i.err" -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "FRIENDS_STATE" } | Select-Object -First 60
             $last = Get-Content "copy$i.log" | Where-Object { $_ -match "FRIENDS_STATE" } | Select-Object -Last 1
             Write-Output "last: $last"
-            $wanted = if ($mode -eq "self") { "status=Connected level=GameLevel connected=2" } else { "status=Connected" }
+            $wanted = if ($mode -eq "self" -or $mode -eq "menu") { "status=Connected level=GameLevel connected=2" } else { "status=Connected" }
             if (-not (Get-Content "copy$i.log" | Select-String -SimpleMatch $wanted)) { $pass = $false }
           }
           Copy-Item "$env:APPDATA\DuckGame\ducklog.txt" . -ErrorAction SilentlyContinue
