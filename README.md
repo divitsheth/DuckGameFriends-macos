@@ -13,7 +13,7 @@ Duck Game for **Macs** (Apple Silicon with macOS 15 or newer, Intel with macOS 1
 
 1. Mac: download the DMG from Releases and drag **Duck Game Friends** into Applications. Windows: download the `-Windows.zip`, extract it, and open `Duck Game Friends.exe` in the extracted folder.
 2. Open it. The Mac app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway. The Windows app is unsigned; if SmartScreen stops it, choose More info → Run anyway.
-3. The game opens on the Duck Game Friends menu (keyboard or controller). One person picks **HOST A ROOM** and sends the room code (like `K7QD-2MXH`, shown in the lobby and already copied) to friends. Friends pick **JOIN A ROOM** and type or paste it. Everyone must join before starting the match.
+3. The game opens on the Duck Game Friends menu (keyboard or controller). One person picks **HOST A ROOM** and sends the room code (like `K7PC-2MXH`, shown in the lobby and already copied) to friends. Friends pick **JOIN A ROOM** and type or paste it. Everyone must join before starting the match.
 
 No VPN, accounts, or router setup: games connect through a small [room relay](relay/). Each player should own Duck Game. Keep room codes private: anyone with the code can join while a slot is free.
 

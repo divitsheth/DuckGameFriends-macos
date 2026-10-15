@@ -2,6 +2,7 @@
 # through the live room relay.
 #   self  this machine hosts a room, a second copy joins, and they start a match
 #   menu  like self, but through the Friends menu: the joiner reads the host's code from the clipboard
+#   typed like menu, but the joiner's clipboard holds an old code and the host's code is typed in with keystrokes
 #   host  this machine hosts `room` so another computer can join it
 #   join  this machine joins `room`, hosted elsewhere
 name: Windows play test
@@ -13,7 +14,7 @@ on:
         required: true
       mode:
         type: choice
-        options: [self, menu, host, join]
+        options: [self, menu, typed, host, join]
         default: self
       room:
         description: Eight-letter room code for host or join
@@ -54,10 +55,25 @@ jobs:
           Write-Output "Room $room"
           $copies = @()
           if ($mode -eq "join") { $copies += Start-Copy 0 "join" $room "" "" }
-          elseif ($mode -eq "menu") { $copies += Start-Copy 0 "menu" "" "1" "host" }
+          elseif ($mode -eq "menu" -or $mode -eq "typed") { $copies += Start-Copy 0 "menu" "" "1" "host" }
           else { $copies += Start-Copy 0 "host" $room "1" "" }
           if ($mode -eq "self") { Start-Sleep 30; $copies += Start-Copy 1 "join" $room "" "" }
           if ($mode -eq "menu") { Start-Sleep 45; $copies += Start-Copy 1 "menu" "" "" "join" }
+          if ($mode -eq "typed") {
+            for ($t = 0; $t -lt 120 -and -not (Select-String -Path copy0.log -SimpleMatch "FRIENDS_RELAY_SEATED" -Quiet -ErrorAction SilentlyContinue); $t++) { Start-Sleep 1 }
+            $room = (Select-String -Path copy0.log -Pattern "FRIENDS_RELAY_SEATED room=(\w+)").Matches[0].Groups[1].Value
+            Write-Output "Host room $room"
+            Set-Clipboard "2987-336P"
+            $copies += Start-Copy 1 "menu" "" "" "type"
+            for ($t = 0; $t -lt 60 -and -not (Select-String -Path copy1.log -SimpleMatch "FRIENDS_JOIN_SCREEN" -Quiet -ErrorAction SilentlyContinue); $t++) { Start-Sleep 1 }
+            Get-Content copy1.log | Select-String "FRIENDS_JOIN_SCREEN"
+            $shell = New-Object -ComObject WScript.Shell
+            [void]$shell.AppActivate($copies[1].Id); Start-Sleep 1
+            foreach ($c in ($room.ToLower() -split '')) { if ($c) { $shell.SendKeys($c); Start-Sleep -Milliseconds 150 } }
+            # Hold Enter for a few frames: the game reads the key's state each frame, and SendKeys releases it at once.
+            Add-Type -Name Keys -Namespace Win32 -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, System.UIntPtr extra);'
+            Start-Sleep 1; [Win32.Keys]::keybd_event(0x0D, 0x1C, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 200; [Win32.Keys]::keybd_event(0x0D, 0x1C, 2, [UIntPtr]::Zero)
+          }
           Start-Sleep ([int]"${{ inputs.seconds }}")
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -71,7 +87,7 @@ jobs:
             Get-Content "copy$i.log", "copy$i.err" -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "FRIENDS_STATE" } | Select-Object -First 60
             $last = Get-Content "copy$i.log" | Where-Object { $_ -match "FRIENDS_STATE" } | Select-Object -Last 1
             Write-Output "last: $last"
-            $wanted = if ($mode -eq "self" -or $mode -eq "menu") { "status=Connected level=GameLevel connected=2" } else { "status=Connected" }
+            $wanted = if ($mode -eq "self" -or $mode -eq "menu" -or $mode -eq "typed") { "status=Connected level=GameLevel connected=2" } else { "status=Connected" }
             if (-not (Get-Content "copy$i.log" | Select-String -SimpleMatch $wanted)) { $pass = $false }
           }
           Copy-Item "$env:APPDATA\DuckGame\ducklog.txt" . -ErrorAction SilentlyContinue

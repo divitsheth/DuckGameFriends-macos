@@ -11,14 +11,20 @@ using DuckGame;
 class FriendsMenu : Level {
  enum Screen { Menu, Join, Busy }
  enum RoomStatus { Open, Missing, Full, Unreachable }
- // Room codes avoid look-alikes (no 0/O, 1/I).
+ // Codes typed in may use any of these (no 0/O, 1/I). New rooms also leave out letters
+ // the game's pixel font draws like others (B/8, D/Q, G/6, S/5, Z/2, Y/V).
  public const string Alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+ const string Generated = "23456789ACEFHJKLMNPRTUVWX";
+ static string hosted = "";
  static readonly string[] Items = { "HOST A ROOM", "JOIN A ROOM", "PLAY LOCALLY", "HOW TO PLAY", "QUIT" };
  static readonly Color Gold = new Color(242,201,76), Dim = new Color(141,153,174), Bad = new Color(235,87,87);
 
  Screen screen = Screen.Menu;
  int selected;
  string code = "", message = "", messageLine2 = "";
+ bool pasted;
+ // Enter as typed text, which arrives even when the game's key polling sees no focus.
+ static bool enterTyped, listening;
  Color messageColor = Dim;
  Task<RoomStatus> pending;
  Action<RoomStatus> then;
@@ -34,6 +40,7 @@ class FriendsMenu : Level {
   box = new SpriteMap("uiBox", 10, 10);
   duck = new SpriteMap("duck", 32, 32);
   Graphics.fade = 1f;
+  if (!listening) { listening = true; Microsoft.Xna.Framework.Input.TextInputEXT.TextInput += c => { if (c == '\r') enterTyped = true; }; }
   ShowMenu("");
   Console.WriteLine("FRIENDS_MENU_SHOWN");
   base.Initialize();
@@ -51,10 +58,13 @@ class FriendsMenu : Level {
  }
  void ShowJoin(string error) {
   screen = Screen.Join;
-  // A code copied from a message is filled in for you.
-  if (code == "") { var clip = Normalize(Clipboard.Read()); if (clip.Length == 8) code = clip; }
+  // A code copied from a message is filled in for you; typing replaces it.
+  pasted = false;
+  if (code == "") { var clip = Normalize(Clipboard.Read()); if (clip.Length == 8 && clip != hosted) { code = clip; pasted = true; } }
   Keyboard.KeyString = code;
-  Say(error == "" ? "TYPE THE CODE YOUR" : error, error == "" ? "FRIEND SENT YOU" : "", error == "" ? Dim : Bad);
+  if (error != "") Say(error, "", Bad);
+  else if (pasted) Say("PASTED FROM YOUR CLIPBOARD", "TYPE TO ENTER ANOTHER CODE", Dim);
+  else Say("TYPE THE CODE YOUR", "FRIEND SENT YOU", Dim);
   Hints("@ENTERKEY@JOIN", "@ESCAPEKEY@BACK");
  }
  void Say(string a, string b, Color c) { message = a; messageLine2 = b; messageColor = c; }
@@ -64,7 +74,8 @@ class FriendsMenu : Level {
   pending = Task.Run(() => Query(room)); then = next;
  }
 
- public static string Normalize(string s) => new string((s ?? "").ToUpperInvariant().Where(c => Alphabet.IndexOf(c) >= 0).Take(8).ToArray());
+ static string Clean(string s) => new string((s ?? "").ToUpperInvariant().Where(c => Alphabet.IndexOf(c) >= 0).ToArray());
+ public static string Normalize(string s) => new string(Clean(s).Take(8).ToArray());
 
  // DUCK_FRIENDS_TEST_MENU=host|join presses through the menu for automated runs.
  // With DUCK_FRIENDS_TEST_LEAVE=1 the host leaves its lobby and hosts once more.
@@ -77,6 +88,7 @@ class FriendsMenu : Level {
    Console.WriteLine("FRIENDS_MENU_SCRIPT " + script);
    if (script == "host") { selected = 0; Choose(); }
    else if (script == "join") { selected = 1; Choose(); var room = code; Check(room, "CHECKING THE CODE...", r => Joined(room, r)); }
+   else if (script == "type") { selected = 1; Choose(); Console.WriteLine("FRIENDS_JOIN_SCREEN code=" + code); }
    script = null;
   }
   if (pending != null) {
@@ -88,18 +100,26 @@ class FriendsMenu : Level {
   } else if (screen == Screen.Join) {
    Input._imeAllowed = true; Keyboard.repeat = true;
    bool command = Keyboard.Down(Keys.LeftWindows) || Keyboard.Down(Keys.RightWindows) || Keyboard.control;
-   if (command && Keyboard.Pressed(Keys.V)) Keyboard.KeyString = Clipboard.Read();
-   var typed = Normalize(Keyboard.KeyString);
-   if (typed != code) { code = typed; SFX.Play("textLetter", 0.7f); }
+   var typed = Clean(Keyboard.KeyString);
+   if (command && Keyboard.Pressed(Keys.V)) typed = Clean(Clipboard.Read());
+   // Typing into a pasted or complete code starts a new one rather than being dropped.
+   else if ((pasted || code.Length == 8) && typed.Length > code.Length && typed.StartsWith(code)) typed = typed.Substring(code.Length);
+   else if (pasted && typed.Length < code.Length) typed = "";
+   typed = new string(typed.Take(8).ToArray());
+   if (typed != code) {
+    code = typed; SFX.Play("textLetter", 0.7f);
+    if (pasted || messageColor == Bad) { pasted = false; Say("TYPE THE CODE YOUR", "FRIEND SENT YOU", Dim); }
+   }
    Keyboard.KeyString = code;
-   // E and P are cancel on the keyboard layouts but are also code letters.
+   // E and P are cancel and right shift is select on the keyboard layouts, but those keys type codes.
    bool back = Keyboard.Pressed(Keys.Escape) || Input.Pressed(Triggers.Cancel) && !Keyboard.Down(Keys.E) && !Keyboard.Down(Keys.P);
    if (back) { Keyboard.repeat = false; code = ""; ShowMenu(""); }
-   else if (Keyboard.Pressed(Keys.Enter) || Input.Pressed(Triggers.Select)) {
+   else if (Keyboard.Pressed(Keys.Enter) || enterTyped || Input.Pressed(Triggers.Select) && !Keyboard.shift) {
     if (code.Length < 8) Say("THE CODE HAS 8 LETTERS", "", Bad);
     else { Keyboard.repeat = false; var room = code; Check(room, "CHECKING THE CODE...", r => Joined(room, r)); }
    }
   }
+  enterTyped = false;
   base.Update();
  }
 
@@ -122,9 +142,9 @@ class FriendsMenu : Level {
  void Host(int tries) {
   var bytes = new byte[8];
   using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create()) rng.GetBytes(bytes);
-  var room = new string(bytes.Select(b => Alphabet[b % Alphabet.Length]).ToArray());
+  var room = new string(bytes.Select(b => Generated[b % Generated.Length]).ToArray());
   Check(room, "CREATING YOUR ROOM...", r => {
-   if (r == RoomStatus.Missing) { Clipboard.Write(Pretty(room)); FriendsBootstrap.StartOnline("host", room); }
+   if (r == RoomStatus.Missing) { hosted = room; Clipboard.Write(Pretty(room)); FriendsBootstrap.StartOnline("host", room); }
    else if (r == RoomStatus.Unreachable) ShowMenu("CAN'T REACH THE SERVER");
    else if (tries > 1) Host(tries - 1);
    else ShowMenu("PLEASE TRY AGAIN");
