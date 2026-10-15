@@ -44,13 +44,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try fm.copyItem(at: resources.appendingPathComponent("game"), to: staging)
             try fm.moveItem(at: staging, to: runtime)
         }
-        let config = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"].map { URL(fileURLWithPath: $0) } ?? fm.homeDirectoryForCurrentUser.appendingPathComponent(".config")
-        let maps = config.appendingPathComponent("DuckGame/Levels/Divits Favorite Remixes")
-        try fm.createDirectory(at: maps, withIntermediateDirectories: true)
-        for file in try fm.contentsOfDirectory(at: resources.appendingPathComponent("Maps"),includingPropertiesForKeys:nil) where file.pathExtension == "lev" {
-            let dest=maps.appendingPathComponent(file.lastPathComponent)
-            if !fm.fileExists(atPath:dest.path) { try fm.copyItem(at:file,to:dest) }
-        }
         // Apple Silicon and Intel Macs each have their own Mono runtime (build_intel.py).
         #if arch(x86_64)
         let mono=resources.appendingPathComponent("Runtime-x86_64")
@@ -67,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         env["DGR_SKIP_STEAMWORKS_COPY"]="1"
         env["DUCK_FRIENDS_RELAY"]=relay
         env["DUCK_FRIENDS_GUIDE"]=resources.appendingPathComponent("Quick Start.html").path
+        env["DUCK_FRIENDS_MAPS"]=resources.appendingPathComponent("Maps").path
         env.removeValue(forKey:"DUCK_FRIENDS_TEST")
         p.environment=env
         try fm.createDirectory(at:log.deletingLastPathComponent(),withIntermediateDirectories:true)

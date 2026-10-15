@@ -1,8 +1,8 @@
-# Duck Game Friends for macOS
+# Duck Game Friends
 
-[**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
+[**Download the latest release**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest): the `.dmg` for Mac, the `-Windows.zip` for Windows.
 
-Duck Game for **Apple Silicon Macs running macOS 15 or newer and Intel Macs running macOS 11 or newer**, with an in-game menu for private 2–8 player online games using short room codes.
+Duck Game for **Macs** (Apple Silicon with macOS 15 or newer, Intel with macOS 11 or newer) **and Windows 10 or 11 PCs**, with an in-game menu for private 2–8 player online games using short room codes.
 
 - Full original game and original maps, plus five custom remix maps.
 - Host a room, copy its room code, and join from another Mac.
@@ -11,8 +11,8 @@ Duck Game for **Apple Silicon Macs running macOS 15 or newer and Intel Macs runn
 
 ## Install and play
 
-1. Download the DMG from Releases and drag **Duck Game Friends** into Applications.
-2. Open it. The app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway.
+1. Mac: download the DMG from Releases and drag **Duck Game Friends** into Applications. Windows: download the `-Windows.zip`, extract it, and open `Duck Game Friends.exe` in the extracted folder.
+2. Open it. The Mac app is Developer ID signed but **not Apple-notarized**; if blocked, use System Settings → Privacy & Security → Open Anyway. The Windows app is unsigned; if SmartScreen stops it, choose More info → Run anyway.
 3. The game opens on the Duck Game Friends menu (keyboard or controller). One person picks **HOST A ROOM** and sends the room code (like `K7QD-2MXH`, shown in the lobby and already copied) to friends. Friends pick **JOIN A ROOM** and type or paste it. Everyone must join before starting the match.
 
 No VPN, accounts, or router setup: games connect through a small [room relay](relay/). Each player should own Duck Game. Keep room codes private: anyone with the code can join while a slot is free.

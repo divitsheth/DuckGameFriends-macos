@@ -108,9 +108,16 @@ class FriendsMenu : Level {
    case 0: Host(3); break;
    case 1: code = ""; ShowJoin(""); break;
    case 2: FriendsBootstrap.StartLocal(); break;
-   case 3: var guide = Environment.GetEnvironmentVariable("DUCK_FRIENDS_GUIDE"); if (guide != null) Process.Start("open", "\"" + guide + "\""); break;
+   case 3: OpenGuide(); break;
    case 4: MonoMain.exit = true; break;
   }
+ }
+ static void OpenGuide() {
+  var guide = Environment.GetEnvironmentVariable("DUCK_FRIENDS_GUIDE") ?? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Quick Start.html");
+  try {
+   if (Environment.OSVersion.Platform == PlatformID.Win32NT) Process.Start(new ProcessStartInfo(guide) { UseShellExecute = true });
+   else Process.Start("open", "\"" + guide + "\"");
+  } catch (Exception e) { Console.WriteLine("FRIENDS_GUIDE_FAILED " + e.Message); }
  }
  void Host(int tries) {
   var bytes = new byte[8];
@@ -214,14 +221,8 @@ class RoomBanner : IEngineUpdatable {
  }
 }
 
+// The system clipboard through SDL, on macOS and Windows alike. Game thread only.
 static class Clipboard {
- static string Run(string tool, string input) {
-  try {
-   var p = Process.Start(new ProcessStartInfo("/usr/bin/" + tool) { UseShellExecute = false, RedirectStandardInput = input != null, RedirectStandardOutput = input == null });
-   if (input != null) { p.StandardInput.Write(input); p.StandardInput.Close(); p.WaitForExit(2000); return ""; }
-   var s = p.StandardOutput.ReadToEnd(); p.WaitForExit(2000); return s;
-  } catch { return ""; }
- }
- public static string Read() => Run("pbpaste", null);
- public static void Write(string s) => Run("pbcopy", s);
+ public static string Read() { try { return SDL2.SDL.SDL_GetClipboardText() ?? ""; } catch { return ""; } }
+ public static void Write(string s) { try { SDL2.SDL.SDL_SetClipboardText(s); } catch { } }
 }
