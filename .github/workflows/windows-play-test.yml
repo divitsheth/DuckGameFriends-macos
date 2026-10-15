@@ -60,7 +60,7 @@ jobs:
           if ($mode -eq "self") { Start-Sleep 30; $copies += Start-Copy 1 "join" $room "" "" }
           if ($mode -eq "menu") { Start-Sleep 45; $copies += Start-Copy 1 "menu" "" "" "join" }
           if ($mode -eq "typed") {
-            Start-Sleep 45
+            for ($t = 0; $t -lt 120 -and -not (Select-String -Path copy0.log -SimpleMatch "FRIENDS_RELAY_SEATED" -Quiet -ErrorAction SilentlyContinue); $t++) { Start-Sleep 1 }
             $room = (Select-String -Path copy0.log -Pattern "FRIENDS_RELAY_SEATED room=(\w+)").Matches[0].Groups[1].Value
             Write-Output "Host room $room"
             Set-Clipboard "2987-336P"
