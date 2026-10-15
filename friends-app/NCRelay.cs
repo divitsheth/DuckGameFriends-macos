@@ -8,7 +8,7 @@ using DuckGame;
 // Routes the original LAN transport through the Duck Game Friends relay.
 //
 // The game still believes it is on a LAN, but each player is addressed by a
-// virtual endpoint for their room slot (10.77.0.1 is the host, .2-.4 guests).
+// virtual endpoint for their room slot (10.77.0.1 is the host, .2-.8 guests).
 // Every packet goes to the relay, which forwards it to the player in that slot,
 // so nobody needs a VPN, port forwarding, or each other's real address.
 // Protocol: relay/relay.js.
@@ -17,10 +17,11 @@ class NCRelay : NCBasic {
  public static string room;
  public static bool hosting;
  public static string failure;
+ public const int Slots=8;
  public static IPEndPoint SlotEndPoint(int slot) => new IPEndPoint(new IPAddress(new byte[]{10,77,0,(byte)(slot+1)}),1337);
  static int SlotOf(IPEndPoint e) {
   var b=e.Address.GetAddressBytes();
-  return b.Length==4 && b[0]==10 && b[1]==77 && b[2]==0 && b[3]>=1 && b[3]<=4 ? b[3]-1 : -1;
+  return b.Length==4 && b[0]==10 && b[1]==77 && b[2]==0 && b[3]>=1 && b[3]<=Slots ? b[3]-1 : -1;
  }
  readonly byte[] nonce=new byte[8];
  byte[] token;
@@ -52,10 +53,11 @@ class NCRelay : NCBasic {
   try {
    if(token==null && failure==null && (now-lastJoin).TotalMilliseconds>500) {
     lastJoin=now;
-    var join=new byte[18];
+    var join=new byte[19]; // the last byte is the room size; guests' is ignored
     join[0]=0x4A; join[1]=(byte)(hosting?0:1);
     System.Text.Encoding.ASCII.GetBytes(room,0,8,join,2);
     Buffer.BlockCopy(nonce,0,join,10,8);
+    join[18]=Slots;
     _socket.Send(join,join.Length,relay);
    }
    if(token!=null && (now-lastKeepalive).TotalSeconds>5) {
@@ -67,7 +69,7 @@ class NCRelay : NCBasic {
    while(_socket.Available>0) {
     var msg=_socket.Receive(ref from);
     if(msg==null||msg.Length<2||!from.Equals(relay))continue; // ignore LAN broadcasts and strangers
-    if(msg[0]==0x44 && msg[1]<4) {
+    if(msg[0]==0x44 && msg[1]<Slots) {
      var data=new byte[msg.Length-2];
      Buffer.BlockCopy(msg,2,data,0,data.Length);
      packets.Enqueue(new NCBasicPacket{data=data,sender=SlotEndPoint(msg[1])});

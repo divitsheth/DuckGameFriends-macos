@@ -2,7 +2,7 @@
 
 [**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
 
-Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with an in-game menu for private 2–4 player online games using short room codes.
+Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with an in-game menu for private 2–8 player online games using short room codes.
 
 - Full original game and original maps, plus five custom remix maps.
 - Host a room, copy its room code, and join from another Mac.
@@ -28,7 +28,7 @@ See [Quick Start](friends-app/Quick%20Start.html) and [technical notes](friends-
 - [Room relay server](relay/) and the in-game relay transport, [`NCRelay.cs`](friends-app/NCRelay.cs).
 - macOS LAN fixes in `DuckNetwork.cs` and `NCBasic.cs`.
 
-Four separate game processes completed a four-player match through the deployed internet relay. A match between separate physical Macs in different homes has **not yet been verified**.
+Eight separate game processes completed an eight-player match through the deployed internet relay, and two players on separate Macs have played through it.
 
 ## Credits and source
 

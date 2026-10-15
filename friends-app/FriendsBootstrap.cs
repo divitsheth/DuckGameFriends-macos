@@ -36,7 +36,7 @@ class FriendsBootstrap {
   if(++lobbyTicks<5)return;
   configured=true;
   DGRSettings.MidGameJoining=false;
-  TeamSelect2.GetOnlineSetting("maxplayers").value=4;
+  TeamSelect2.GetOnlineSetting("maxplayers").value=NCRelay.Slots;
   UseRelay(room,mode=="host");
   if(mode=="host") {
    TeamSelect2.GetOnlineSetting("name").value="Duck Game Friends";
@@ -45,7 +45,7 @@ class FriendsBootstrap {
    TeamSelect2.GetOnlineSetting("type").value=(int)NetworkLobbyType.LAN;
    TeamSelect2.GetOnlineSetting("dedicated").value=false;
    TeamSelect2.FillMatchmakingProfiles();
-   DuckNetwork.Host(4,NetworkLobbyType.LAN,true);
+   DuckNetwork.Host(NCRelay.Slots,NetworkLobbyType.LAN,true);
    ((TeamSelect2)Level.current).PrepareForOnline();
    Console.WriteLine("FRIENDS_HOST_STARTED room="+room);
   } else {
@@ -102,7 +102,7 @@ class FriendsBootstrap {
        Console.WriteLine("FRIENDS_TEST_LEAVING room="+NCRelay.room);
        Level.current=new DisconnectFromGame();
       }
-      if(mode=="host" && connected==4 && DuckNetwork.status==DuckNetStatus.Connected && Level.current is TeamSelect2 && Environment.GetEnvironmentVariable("DUCK_FRIENDS_TEST_MATCH")=="1" && ++readySeconds==10)
+      if(mode=="host" && connected==int.Parse(Environment.GetEnvironmentVariable("DUCK_FRIENDS_TEST_PLAYERS")??"4") && DuckNetwork.status==DuckNetStatus.Connected && Level.current is TeamSelect2 && Environment.GetEnvironmentVariable("DUCK_FRIENDS_TEST_MATCH")=="1" && ++readySeconds==10)
        ((TeamSelect2)Level.current).forcestart=true;
      }
     });

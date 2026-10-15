@@ -19,7 +19,8 @@ function client(port) {
     close: () => s.close(),
   };
 }
-const join = (role, code, nonce = crypto.randomBytes(8)) => Buffer.concat([Buffer.from([0x4a, role]), Buffer.from(code), nonce]);
+const join = (role, code, nonce = crypto.randomBytes(8), size) =>
+  Buffer.concat([Buffer.from([0x4a, role]), Buffer.from(code), nonce, Buffer.from(size ? [size] : [])]);
 const data = (token, to, text) => Buffer.concat([Buffer.from([0x44]), token, Buffer.from([to]), Buffer.from(text)]);
 
 test('host and guests exchange packets by slot', async () => {
@@ -70,6 +71,20 @@ test('retried join keeps its slot; bad and full rooms are reported', async () =>
     await c.send(Buffer.concat([Buffer.from([0x51]), Buffer.from('ROOMROOM')]));
     assert.equal((await c.next())[1], 2);
     await c.send(join(1, 'ROOMROOM'));
+    assert.deepEqual([...(await c.next()).subarray(0, 2)], [0x45, 2]);
+  } finally { c.close(); relay.close(); }
+});
+
+test('a host can open an eight-player room', async () => {
+  const relay = await createRelay({ port: 0, host: '127.0.0.1', log: () => {} });
+  const c = client(relay.port);
+  try {
+    await c.send(join(0, 'EIGHTDUX', crypto.randomBytes(8), 8));
+    assert.equal((await c.next())[1], 0);
+    const slots = [];
+    for (let i = 0; i < 7; i++) { await c.send(join(1, 'EIGHTDUX')); slots.push((await c.next())[1]); }
+    assert.deepEqual(slots, [1, 2, 3, 4, 5, 6, 7]);
+    await c.send(join(1, 'EIGHTDUX'));
     assert.deepEqual([...(await c.next()).subarray(0, 2)], [0x45, 2]);
   } finally { c.close(); relay.close(); }
 });

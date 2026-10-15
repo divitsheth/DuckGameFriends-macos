@@ -1,11 +1,13 @@
 // Duck Game Friends room relay.
 //
 // Every player's game sends UDP to this server instead of to each other.
-// A room has four slots; slot 0 is the host. Packets are addressed by slot,
+// A room has up to eight slots; slot 0 is the host, who picks the size. Packets are addressed by slot,
 // so players never need each other's IP addresses or open router ports.
 //
 // Client -> relay
-//   'J' role(1: 0 host, 1 guest) code(8 ascii) nonce(8)   join or create a room
+//   'J' role(1: 0 host, 1 guest) code(8 ascii) nonce(8) [size(1)]
+//                                                         join or create a room;
+//                                                         a host's size (2-8) defaults to 4
 //   'D' token(8) toSlot(1) payload                        forward payload
 //   'K' token(8)                                          keepalive
 //   'Q' code(8)                                           does the room have space?
@@ -17,13 +19,14 @@
 const dgram = require('node:dgram');
 const crypto = require('node:crypto');
 
-const SLOTS = 4;
+const SLOTS = 8; // the most any room can have
+const DEFAULT_SIZE = 4; // rooms opened by 1.1 and 1.2 clients
 const MEMBER_TIMEOUT_MS = 20000;
 const CODE = /^[0-9A-Z]{8}$/;
 
 function createRelay({ port = 7777, host = '0.0.0.0', log = console.log } = {}) {
   const socket = dgram.createSocket('udp4');
-  const rooms = new Map(); // code -> Array(SLOTS) of member | null
+  const rooms = new Map(); // code -> Array(room size) of member | null
   const members = new Map(); // token hex -> member
 
   const send = (buf, m) => socket.send(buf, m.port, m.address);
@@ -49,7 +52,7 @@ function createRelay({ port = 7777, host = '0.0.0.0', log = console.log } = {}) 
   }
 
   function join(msg, rinfo) {
-    if (msg.length !== 18) return;
+    if (msg.length !== 18 && msg.length !== 19) return;
     const role = msg[1];
     const code = msg.toString('ascii', 2, 10);
     const nonce = msg.subarray(10, 18);
@@ -69,7 +72,8 @@ function createRelay({ port = 7777, host = '0.0.0.0', log = console.log } = {}) 
     let slot;
     if (role === 0) {
       if (room) return reply(Buffer.concat([Buffer.from([0x45, 3]), nonce]), rinfo);
-      room = new Array(SLOTS).fill(null);
+      const size = msg.length === 19 ? Math.min(SLOTS, Math.max(2, msg[18])) : DEFAULT_SIZE;
+      room = new Array(size).fill(null);
       rooms.set(code, room);
       slot = 0;
       log(`room ${code} opened`);
@@ -104,7 +108,7 @@ function createRelay({ port = 7777, host = '0.0.0.0', log = console.log } = {}) 
     touch(member, rinfo);
     if (type !== 0x44 || msg.length < 10) return;
     const to = msg[9];
-    const target = to < SLOTS && to !== member.slot ? rooms.get(member.code)?.[to] : null;
+    const target = to !== member.slot ? rooms.get(member.code)?.[to] : null;
     if (!target) return;
     const out = Buffer.allocUnsafe(msg.length - 8);
     out[0] = 0x44;

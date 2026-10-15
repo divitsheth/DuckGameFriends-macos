@@ -1,6 +1,6 @@
 # Duck Game Friends 1.1.0
 
-Private 2–4 player Duck Game on Apple Silicon Macs running macOS 15 or newer.
+Private 2–8 player Duck Game on Apple Silicon Macs running macOS 15 or newer.
 
 Deliverable: `~/Downloads/DuckGameFriends-1.1.0-AppleSilicon.dmg`.
 Installed app: `/Applications/Duck Game Friends.app`.
@@ -11,12 +11,13 @@ The image includes the game, Mono 6.14.1, five favorite-map remixes, an in-game 
 
 Duck Game's LAN mode connects every player to every other player, not only to the host. Rather than requiring a shared VPN, every game sends its packets to the room relay, which forwards them by slot.
 
-- `relay/relay.js` is a dependency-free Node UDP server. A room has four slots; slot 0 is the host. It forwards packets between slots, answers the menu's room checks, and closes a room when the host goes quiet for 20 seconds. Rooms exist only in memory. Deployed on Fly.io as `duckfriends-relay` (`duckfriends-relay.fly.dev:7777`, dedicated IPv4 for UDP); deploy with `fly deploy` from `relay/`; test with `node --test` from `relay/`.
-- `NCRelay.cs` subclasses the game's `NCBasic` LAN transport inside the game process. Each slot has a virtual endpoint (`10.77.0.1` host, `.2`–`.4` guests), so the addresses the host shares with guests resolve to relay slots on every Mac. The original game assembly is unchanged; `FriendsBootstrap.cs` installs the transport before hosting or joining.
+- `relay/relay.js` is a dependency-free Node UDP server. A room has up to eight slots; slot 0 is the host, whose join message sets the size (rooms from 1.1 and 1.2, which don't send one, get four). It forwards packets between slots, answers the menu's room checks, and closes a room when the host goes quiet for 20 seconds. Rooms exist only in memory. Deployed on Fly.io as `duckfriends-relay` (`duckfriends-relay.fly.dev:7777`, dedicated IPv4 for UDP); deploy with `fly deploy` from `relay/`; test with `node --test` from `relay/`.
+- `NCRelay.cs` subclasses the game's `NCBasic` LAN transport inside the game process. Each slot has a virtual endpoint (`10.77.0.1` host, `.2`–`.8` guests), so the addresses the host shares with guests resolve to relay slots on every Mac. The original game assembly is unchanged; `FriendsBootstrap.cs` installs the transport before hosting or joining.
 - `FriendsMenu.cs` is the first screen, drawn with the game's own menu box, font, logo and duck and driven by keyboard or controller. It generates room codes, asks the relay whether a room exists and has space, copies the host's code and reads a copied code when joining, and pins the room code to the lobby. `Launcher.swift` only installs the runtime and starts the game in `menu` mode. `DUCK_FRIENDS_RELAY=host:port` overrides the relay for testing; `DUCK_FRIENDS_TEST_MENU=host|join` presses through the menu for automated runs.
 
 ## Verification
 
+- 1.3.0: eight game processes completed a match through the deployed relay; four 1.2.0 processes still completed a match through the updated relay. Relay tests cover eight-slot rooms.
 - 1.2.0: one game hosted through the menu and a second joined through the menu with the code it read from the clipboard; both reached the same lobby with the room code banner shown. A join with an unknown code showed "NO ROOM WITH THAT CODE". The four-process relay match still passes with the 1.2.0 bootstrap.
 - 1.1.0: four independent game processes from the installed app seated in one relay room on the deployed Fly relay, connected to each other, and completed a forced match start (`verification/relay-four-player-match.log`). The launcher's room check reported open, full, missing, and unreachable rooms correctly. Relay protocol tests: `node --test` in `relay/`.
 
@@ -40,7 +41,7 @@ The custom game app is Developer ID signed but **not Apple-notarized**. Apple Ga
 
 ## Implementation
 
-`FriendsBootstrap.cs` shows the menu, installs a fresh relay transport for each room, and enters the original LAN host/join flow with four slots, using the room code as the lobby password. Leaving a lobby returns to the menu. `Launcher.swift` installs maps without overwriting existing files and starts the bundled Mono engine; it has no window of its own. Logs are in `~/Library/Logs/DuckGameFriends/game.log`.
+`FriendsBootstrap.cs` shows the menu, installs a fresh relay transport for each room, and enters the original LAN host/join flow with eight slots, using the room code as the lobby password. Leaving a lobby returns to the menu. `Launcher.swift` installs maps without overwriting existing files and starts the bundled Mono engine; it has no window of its own. Logs are in `~/Library/Logs/DuckGameFriends/game.log`.
 
 Two upstream macOS LAN bugs are fixed in source and applied to the pinned release using `PatchRelease.cs`: Mono does not implement UDP listener enumeration, so clients bind an OS-assigned ephemeral port; the Steam-only mid-game metadata helper is skipped for LAN sessions. The installed original DuckGameRebuilt app is unchanged.
 
