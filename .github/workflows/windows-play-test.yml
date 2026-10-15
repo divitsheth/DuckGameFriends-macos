@@ -72,7 +72,7 @@ jobs:
             foreach ($c in ($room.ToLower() -split '')) { if ($c) { $shell.SendKeys($c); Start-Sleep -Milliseconds 150 } }
             # Hold Enter for a few frames: the game reads the key's state each frame, and SendKeys releases it at once.
             Add-Type -Name Keys -Namespace Win32 -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, System.UIntPtr extra);'
-            Start-Sleep 1; [Win32.Keys]::keybd_event(0x0D, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 200; [Win32.Keys]::keybd_event(0x0D, 0, 2, [UIntPtr]::Zero)
+            Start-Sleep 1; [Win32.Keys]::keybd_event(0x0D, 0x1C, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 200; [Win32.Keys]::keybd_event(0x0D, 0x1C, 2, [UIntPtr]::Zero)
           }
           Start-Sleep ([int]"${{ inputs.seconds }}")
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing

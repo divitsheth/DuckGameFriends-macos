@@ -12,9 +12,9 @@ class FriendsMenu : Level {
  enum Screen { Menu, Join, Busy }
  enum RoomStatus { Open, Missing, Full, Unreachable }
  // Codes typed in may use any of these (no 0/O, 1/I). New rooms also leave out letters
- // the game's pixel font draws like others (B/8, D/Q, G/6, S/5, Z/2).
+ // the game's pixel font draws like others (B/8, D/Q, G/6, S/5, Z/2, Y/V).
  public const string Alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
- const string Generated = "23456789ACEFHJKLMNPRTUVWXY";
+ const string Generated = "23456789ACEFHJKLMNPRTUVWX";
  static string hosted = "";
  static readonly string[] Items = { "HOST A ROOM", "JOIN A ROOM", "PLAY LOCALLY", "HOW TO PLAY", "QUIT" };
  static readonly Color Gold = new Color(242,201,76), Dim = new Color(141,153,174), Bad = new Color(235,87,87);
