@@ -1,0 +1,81 @@
+# Plays the Windows build of Duck Game Friends on a GitHub Windows machine,
+# through the live room relay.
+#   self  this machine hosts a room, a second copy joins, and they start a match
+#   host  this machine hosts `room` so another computer can join it
+#   join  this machine joins `room`, hosted elsewhere
+name: Windows play test
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Release tag whose -Windows.zip to test (drafts work)
+        required: true
+      mode:
+        type: choice
+        options: [self, host, join]
+        default: self
+      room:
+        description: Eight-letter room code for host or join
+        default: ""
+      seconds:
+        default: "150"
+permissions:
+  contents: read
+jobs:
+  play:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download and unpack
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.release }}" -R "${{ github.repository }}" -p "*-Windows.zip" -O game.zip
+          Expand-Archive game.zip -DestinationPath .
+      - name: Play
+        run: |
+          $game = Join-Path $PWD "Duck Game Friends"
+          function Start-Copy($i, $how, $room, $extra) {
+            $env:DUCK_FRIENDS_TEST = "1"
+            $env:DUCK_FRIENDS_ROOM = $room
+            $env:DUCK_FRIENDS_TEST_MATCH = $extra
+            $env:DUCK_FRIENDS_TEST_PLAYERS = "2"
+            Start-Process -FilePath (Join-Path $game "Duck Game Friends.exe") -ArgumentList $how -WorkingDirectory $game `
+              -RedirectStandardOutput "copy$i.log" -RedirectStandardError "copy$i.err" -PassThru
+          }
+          $mode = "${{ inputs.mode }}"
+          $room = "${{ inputs.room }}"
+          if ($mode -eq "self") { $room = -join ((1..8) | ForEach-Object { "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"[(Get-Random -Maximum 32)] }) }
+          Write-Output "Room $room"
+          $copies = @()
+          if ($mode -eq "join") { $copies += Start-Copy 0 "join" $room "" }
+          else { $copies += Start-Copy 0 "host" $room "1" }
+          if ($mode -eq "self") { Start-Sleep 30; $copies += Start-Copy 1 "join" $room "" }
+          Start-Sleep ([int]"${{ inputs.seconds }}")
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
+          $bitmap.Save("screen.png")
+          $copies | ForEach-Object { if (-not $_.HasExited) { Stop-Process -Id $_.Id -Force } }
+          $pass = $true
+          for ($i = 0; $i -lt $copies.Count; $i++) {
+            Write-Output "=== copy $i"
+            Get-Content "copy$i.log", "copy$i.err" -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "FRIENDS_STATE" } | Select-Object -First 60
+            $last = Get-Content "copy$i.log" | Where-Object { $_ -match "FRIENDS_STATE" } | Select-Object -Last 1
+            Write-Output "last: $last"
+            $wanted = if ($mode -eq "self") { "status=Connected level=GameLevel connected=2" } else { "status=Connected" }
+            if (-not (Get-Content "copy$i.log" | Select-String -SimpleMatch $wanted)) { $pass = $false }
+          }
+          Copy-Item "$env:APPDATA\DuckGame\ducklog.txt" . -ErrorAction SilentlyContinue
+          if ($pass) { Write-Output "PLAY_TEST_PASS" } else { Write-Output "PLAY_TEST_FAIL"; exit 1 }
+      - name: Keep logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-play-test
+          path: |
+            copy*.log
+            copy*.err
+            screen.png
+            ducklog.txt
