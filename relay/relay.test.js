@@ -2,6 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 const dgram = require('node:dgram');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { createRelay } = require('./relay');
 
 function client(port) {
@@ -87,4 +90,39 @@ test('a host can open an eight-player room', async () => {
     await c.send(join(1, 'EIGHTDUX'));
     assert.deepEqual([...(await c.next()).subarray(0, 2)], [0x45, 2]);
   } finally { c.close(); relay.close(); }
+});
+
+test('pings players and saves a match record when the room closes', async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-'));
+  const logs = [];
+  const relay = await createRelay({ port: 0, host: '127.0.0.1', log: (l) => logs.push(l), probeMs: 50, memberTimeoutMs: 400, dataDir });
+  const [h, g] = [client(relay.port), client(relay.port)];
+  try {
+    await h.send(join(0, 'PINGPONG', crypto.randomBytes(8), 2));
+    const ha = await h.next();
+    await g.send(join(1, 'PINGPONG'));
+    const ga = await g.next();
+    // The guest answers a ping with a report, as 1.5.2 does; the host ignores pings, as older versions do.
+    let ping;
+    while ((ping = await g.next())[0] !== 0x50);
+    const report = Buffer.from(JSON.stringify({ name: 'Guest', os: 'windows', conns: [{ slot: 0, ping: 210 }] }));
+    await g.send(Buffer.concat([Buffer.from([0x4f]), ga.subarray(2, 10), ping.subarray(1, 5), report]));
+    await g.send(data(ga.subarray(2, 10), 0, 'hi'));
+    await new Promise((r) => setTimeout(r, 30));
+    relay.sample();
+    await new Promise((r) => setTimeout(r, 2500)); // both go quiet, so the room times out
+    const [line] = fs.readFileSync(path.join(dataDir, 'matches.jsonl'), 'utf8').trim().split('\n');
+    const record = JSON.parse(line);
+    assert.equal(record.room, 'PINGPONG');
+    assert.deepEqual(record.players.map((p) => [p.slot, p.name]), [[0, undefined], [1, 'Guest']]);
+    assert.ok(!('token' in record.players[0]));
+    const s = record.samples[0].slots;
+    assert.equal(s[1].answers, 1);
+    assert.equal(s[1].game.conns[0].ping, 210);
+    assert.equal(s[0].answers, 0);
+    assert.equal(s[1].in, 2);
+    assert.equal(s[0].out, 1);
+    assert.ok(logs.some((l) => l.startsWith('room PINGPONG report') && l.includes('slot 1 Guest: ping')));
+    void ha;
+  } finally { [h, g].forEach((c) => c.close()); relay.close(); }
 });

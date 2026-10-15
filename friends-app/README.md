@@ -33,6 +33,7 @@ The "Windows play test" workflow plays a Windows zip from a (draft) release on a
 
 ## Verification
 
+- 1.5.2: a 1.5.2 host and an older guest played a match through the live relay; the relay saved the match record, with the host's game report and both players' traffic, and `relay/matches.py` printed it.
 - 1.5.1: the join screen with an old code already filled in from the clipboard, then the host's code typed with real keystrokes and Enter: the two copies joined and completed a match, on the Mac (System Events keystrokes) and on a GitHub Windows machine (the play test's `typed` mode).
 - 1.5.0: on GitHub's Windows Server 2025 machines (software Direct3D 11), two Windows copies completed a match, both by direct host/join and through the menu with the code read from the clipboard. A Mac host with a Windows guest completed matches in three of four runs; the failed run left no error text and happened while an earlier test was still running on the Mac. A Windows host with a Mac guest completed a match. On the Mac, menu host and clipboard join still work, and maps still install. Not tested: a Windows PC with a real GPU, keyboard or controller.
 

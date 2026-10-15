@@ -14,6 +14,15 @@ primary_region = "iad"
   [[services.ports]]
     port = 7777
 
+# Match records (relay/matches.py reads them):
+#   fly volumes create relay_data --app duckfriends-relay --region iad --size 1
+[env]
+  DATA_DIR = "/data"
+
+[mounts]
+  source = "relay_data"
+  destination = "/data"
+
 [[restart]]
   policy = "always"
 
