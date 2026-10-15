@@ -32,7 +32,6 @@ jobs:
           Copy-Item build/FNA3D/Release/FNA3D.dll, build/FAudio/Release/FAudio.dll, "$sdl/lib/x86/SDL2.dll" out
           Copy-Item "$sdl/README-SDL.txt" out/SDL2-README.txt -ErrorAction SilentlyContinue
           Get-ChildItem out | ForEach-Object { "{0} {1}" -f $_.Name, (Get-FileHash $_.FullName).Hash }
-          & "$env:VCToolsInstallDir\bin\Hostx64\x86\dumpbin.exe" /dependents out/FNA3D.dll out/FAudio.dll 2>$null | Select-String "\.dll" 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-natives
