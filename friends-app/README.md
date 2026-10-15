@@ -1,8 +1,8 @@
 # Duck Game Friends
 
-Private 2–8 player Duck Game on Apple Silicon Macs running macOS 15 or newer and Intel Macs running macOS 11 or newer.
+Private 2–8 player Duck Game on Apple Silicon Macs running macOS 15 or newer, Intel Macs running macOS 11 or newer, and Windows 10 or 11 PCs.
 
-Deliverable: `~/Downloads/DuckGameFriends-<version>.dmg` (releases up to 1.3.0 were named `-AppleSilicon.dmg`).
+Deliverables: `~/Downloads/DuckGameFriends-<version>.dmg` (releases up to 1.3.0 were named `-AppleSilicon.dmg`) and `~/Downloads/DuckGameFriends-<version>-Windows.zip`.
 Installed app: `/Applications/Duck Game Friends.app`.
 
 The image includes the game, Mono 6.14.1 for Apple Silicon and Mono 6.12 for Intel, five favorite-map remixes, an in-game Host/Join menu, and Quick Start.html. Each player needs their own legitimate game copy. The host sends an eight-character room code; it is both the relay room and the lobby password. No VPN, accounts, or router forwarding are needed. The host must keep the game running. Join before starting a round; mid-game joining is disabled.
@@ -23,7 +23,17 @@ One universal app serves both kinds of Mac. Homebrew no longer publishes Intel b
     python3 update_bundle.py "<previous release>/Duck Game Friends.app" 1.4.0 5
     python3 package_dmg.py
 
+## Windows
+
+`package_windows.py` turns the macOS build into a Windows zip. DuckGameRebuilt runs natively on Windows under .NET Framework 4.8, which Windows includes, so no runtime is bundled. The Friends bootstrap is compiled a second time as `Duck Game Friends.exe`: a 32-bit Windows program, because DuckGameRebuilt's Windows libraries are 32-bit, and compiled against .NET Framework 4.8 reference assemblies (from the Mono installer `build_intel.py` unpacks) so it calls nothing Windows lacks. The game folder's own Windows FNA3D and FAudio are older than FNA.dll, so textures fail to load with them. The "Windows native libraries" workflow (`.github/workflows/windows-natives.yml`) builds them from this repository's FNA sources, with the official SDL2 2.32.10 and a statically linked C runtime. The script downloads its latest artifact. The bootstrap's clipboard goes through SDL, and it installs the remix maps into the game's own level folder itself, on both systems.
+
+The "Windows play test" workflow plays a Windows zip from a (draft) release on a GitHub Windows machine through the live relay. Modes: `self` (host and join on one machine), `menu` (the same through the Friends menu and clipboard), and `host`/`join` (play against another computer).
+
+    python3 package_windows.py
+
 ## Verification
+
+- 1.5.0: on GitHub's Windows Server 2025 machines (software Direct3D 11), two Windows copies completed a match, both by direct host/join and through the menu with the code read from the clipboard. A Mac host with a Windows guest completed matches in three of four runs; the failed run left no error text and happened while an earlier test was still running on the Mac. A Windows host with a Mac guest completed a match. On the Mac, menu host and clipboard join still work, and maps still install. Not tested: a Windows PC with a real GPU, keyboard or controller.
 
 - 1.4.0: tested on an Apple Silicon Mac, with the Intel half running under Rosetta. Using the signed runtimes from the release build, an Intel host, an Apple Silicon guest and an Intel guest completed a match through the deployed relay. Unsigned builds also passed: an Intel host with an Apple Silicon guest, and an Apple Silicon host with two Intel guests and one Apple Silicon guest. The released app, forced to run as Intel, started the Intel runtime and reached the Friends menu. No real Intel Mac or macOS release before 15 has been tested.
 

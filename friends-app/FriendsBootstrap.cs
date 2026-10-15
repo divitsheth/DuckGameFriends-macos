@@ -9,7 +9,9 @@ using DuckGame;
 //   menu        the Friends menu (FriendsMenu.cs); what the app launches
 //   host, join  go straight online with DUCK_FRIENDS_ROOM (automated tests)
 //   local       the ordinary local lobby
+// On macOS, Launcher.swift starts it with Mono; on Windows it is "Duck Game Friends.exe".
 class FriendsBootstrap {
+ const string DefaultRelay = "duckfriends-relay.fly.dev:7777";
  static string mode, room;
  static bool configured, menuShown;
  static int lobbyTicks;
@@ -58,10 +60,25 @@ class FriendsBootstrap {
    Console.WriteLine("FRIENDS_JOIN_STARTED");
   }
  }
+ // Copies the bundled remix maps into the game's custom level folder, keeping any existing copies.
+ static void InstallMaps() {
+  try {
+   var source=Environment.GetEnvironmentVariable("DUCK_FRIENDS_MAPS")??Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Maps");
+   if(!Directory.Exists(source))return;
+   var dest=Path.Combine(DuckFile.levelDirectory,"Divits Favorite Remixes");
+   Directory.CreateDirectory(dest);
+   foreach(var file in Directory.GetFiles(source,"*.lev")) {
+    var target=Path.Combine(dest,Path.GetFileName(file));
+    if(!File.Exists(target))File.Copy(file,target);
+   }
+   Console.WriteLine("FRIENDS_MAPS_READY "+dest);
+  } catch(Exception e) { Console.WriteLine("FRIENDS_MAPS_FAILED "+e.Message); }
+ }
  static void Tick() {
   if(!menuShown && mode=="menu" && Level.current!=null) {
    menuShown=true;
    Program.main.Window.Title="Duck Game Friends";
+   InstallMaps();
    MonoMain.RegisterEngineUpdatable(new RoomBanner());
    Level.current=new FriendsMenu();
    return;
@@ -75,9 +92,9 @@ class FriendsBootstrap {
   if(mode=="host"||mode=="join")Configure();
  }
  static void Main(string[] args) {
-  mode=args.Length>0?args[0]:"local";
+  mode=args.Length>0?args[0]:"menu";
   if(mode!="local") {
-   var relay=(Environment.GetEnvironmentVariable("DUCK_FRIENDS_RELAY")??"").Split(':');
+   var relay=(Environment.GetEnvironmentVariable("DUCK_FRIENDS_RELAY")??DefaultRelay).Split(':');
    if(relay.Length!=2)throw new ArgumentException("DUCK_FRIENDS_RELAY must be host:port.");
    var ip=Dns.GetHostAddresses(relay[0]).First(a=>a.AddressFamily==System.Net.Sockets.AddressFamily.InterNetwork);
    NCRelay.relay=new IPEndPoint(ip,int.Parse(relay[1]));
@@ -88,6 +105,9 @@ class FriendsBootstrap {
   }
   MonoMain.IgnoreDGRUpdates=true;
   bool test=Environment.GetEnvironmentVariable("DUCK_FRIENDS_TEST")=="1";
+  // Test runs also print the first exceptions thrown, including ones the game catches and hides.
+  int shown=0;
+  if(test)AppDomain.CurrentDomain.FirstChanceException+=(sender,e)=>{ if(++shown<=20)Console.WriteLine("FRIENDS_EXCEPTION "+e.Exception.GetType().Name+": "+e.Exception.Message); };
   new Thread(()=>{
    int readySeconds=0, leaveSeconds=0, ticks=0;
    while(true) {
@@ -97,6 +117,7 @@ class FriendsBootstrap {
      if(mode!="local"||menuShown)Tick();
      if(report) {
       int connected=DuckNetwork.profiles.Count(p=>p.connection!=null);
+      if(Level.current is ConnectionError)Console.WriteLine("FRIENDS_CONNECTION_ERROR "+typeof(ConnectionError).GetField("_text",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(Level.current));
       Console.WriteLine("FRIENDS_STATE mode="+mode+" status="+DuckNetwork.status+" level="+(Level.current==null?"null":Level.current.GetType().Name)+" connected="+connected+" slots="+DuckNetwork.numSlots+" ducks="+(Level.current==null?0:Level.current.things.OfType<Duck>().Count()));
       if(Environment.GetEnvironmentVariable("DUCK_FRIENDS_TEST_LEAVE")=="1" && NCRelay.hosting && Network.isActive && Level.current is TeamSelect2 && ++leaveSeconds==8) {
        Console.WriteLine("FRIENDS_TEST_LEAVING room="+NCRelay.room);
