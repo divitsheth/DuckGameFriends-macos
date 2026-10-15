@@ -20,7 +20,7 @@ on:
       seconds:
         default: "150"
 permissions:
-  contents: read
+  contents: write  # needed to see draft releases
 jobs:
   play:
     runs-on: windows-latest
@@ -30,7 +30,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "${{ inputs.release }}" -R "${{ github.repository }}" -p "*-Windows.zip" -O game.zip
+          # Draft releases are not found by tag, so look the asset up in the release list.
+          $asset = gh api "repos/${{ github.repository }}/releases" --jq '.[] | select(.tag_name == "${{ inputs.release }}") | .assets[] | select(.name | endswith("-Windows.zip")) | .url'
+          if (-not $asset) { throw "No -Windows.zip in release ${{ inputs.release }}" }
+          curl.exe -fsSL -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/octet-stream" -o game.zip $asset
           Expand-Archive game.zip -DestinationPath .
       - name: Play
         run: |
