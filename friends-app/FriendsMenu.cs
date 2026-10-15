@@ -23,6 +23,8 @@ class FriendsMenu : Level {
  int selected;
  string code = "", message = "", messageLine2 = "";
  bool pasted;
+ // Enter as typed text, which arrives even when the game's key polling sees no focus.
+ static bool enterTyped, listening;
  Color messageColor = Dim;
  Task<RoomStatus> pending;
  Action<RoomStatus> then;
@@ -38,6 +40,7 @@ class FriendsMenu : Level {
   box = new SpriteMap("uiBox", 10, 10);
   duck = new SpriteMap("duck", 32, 32);
   Graphics.fade = 1f;
+  if (!listening) { listening = true; Microsoft.Xna.Framework.Input.TextInputEXT.TextInput += c => { if (c == '\r') enterTyped = true; }; }
   ShowMenu("");
   Console.WriteLine("FRIENDS_MENU_SHOWN");
   base.Initialize();
@@ -111,11 +114,12 @@ class FriendsMenu : Level {
    // E and P are cancel and right shift is select on the keyboard layouts, but those keys type codes.
    bool back = Keyboard.Pressed(Keys.Escape) || Input.Pressed(Triggers.Cancel) && !Keyboard.Down(Keys.E) && !Keyboard.Down(Keys.P);
    if (back) { Keyboard.repeat = false; code = ""; ShowMenu(""); }
-   else if (Keyboard.Pressed(Keys.Enter) || Input.Pressed(Triggers.Select) && !Keyboard.shift) {
+   else if (Keyboard.Pressed(Keys.Enter) || enterTyped || Input.Pressed(Triggers.Select) && !Keyboard.shift) {
     if (code.Length < 8) Say("THE CODE HAS 8 LETTERS", "", Bad);
     else { Keyboard.repeat = false; var room = code; Check(room, "CHECKING THE CODE...", r => Joined(room, r)); }
    }
   }
+  enterTyped = false;
   base.Update();
  }
 
