@@ -1,0 +1,38 @@
+# Builds the 32-bit Windows libraries Duck Game Friends needs: FNA3D and FAudio
+# from the FNA sources in this repository (matching FNA.dll), and the official
+# SDL2 2.32.10 release they link against. friends-app/package_windows.py uses the
+# resulting artifact. The C runtime is linked statically, so players need no
+# Visual C++ redistributable.
+name: Windows native libraries
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          curl.exe -fsSL -o sdl.zip https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
+          if ((Get-FileHash sdl.zip).Hash -ne "AF347939395A58B365846AAEA27391E69F9EC9D4DD650D6AC40802159B418A6E") { throw "SDL2 checksum mismatch" }
+          Expand-Archive sdl.zip -DestinationPath .
+          $sdl = "$PWD/SDL2-2.32.10"
+          foreach ($name in "FNA3D", "FAudio") {
+            cmake -S "FNA/lib/$name" -B "build/$name" -A Win32 -DBUILD_SHARED_LIBS=ON `
+              -DSDL2_INCLUDE_DIRS="$sdl/include" -DSDL2_LIBRARIES="$sdl/lib/x86/SDL2.lib" `
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+            if ($LASTEXITCODE) { throw "configure $name failed" }
+            cmake --build "build/$name" --config Release
+            if ($LASTEXITCODE) { throw "build $name failed" }
+          }
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item build/FNA3D/Release/FNA3D.dll, build/FAudio/Release/FAudio.dll, "$sdl/lib/x86/SDL2.dll" out
+          Copy-Item "$sdl/README-SDL.txt" out/SDL2-README.txt -ErrorAction SilentlyContinue
+          Get-ChildItem out | ForEach-Object { "{0} {1}" -f $_.Name, (Get-FileHash $_.FullName).Hash }
+          & "$env:VCToolsInstallDir\bin\Hostx64\x86\dumpbin.exe" /dependents out/FNA3D.dll out/FAudio.dll 2>$null | Select-String "\.dll" 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-natives
+          path: out
