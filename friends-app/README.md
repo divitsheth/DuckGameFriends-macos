@@ -1,11 +1,11 @@
-# Duck Game Friends 1.1.0
+# Duck Game Friends
 
-Private 2–8 player Duck Game on Apple Silicon Macs running macOS 15 or newer.
+Private 2–8 player Duck Game on Apple Silicon Macs running macOS 15 or newer and Intel Macs running macOS 11 or newer.
 
-Deliverable: `~/Downloads/DuckGameFriends-1.1.0-AppleSilicon.dmg`.
+Deliverable: `~/Downloads/DuckGameFriends-<version>.dmg` (releases up to 1.3.0 were named `-AppleSilicon.dmg`).
 Installed app: `/Applications/Duck Game Friends.app`.
 
-The image includes the game, Mono 6.14.1, five favorite-map remixes, an in-game Host/Join menu, and Quick Start.html. Each player needs their own legitimate game copy. The host sends an eight-character room code; it is both the relay room and the lobby password. No VPN, accounts, or router forwarding are needed. The host must keep the game running. Join before starting a round; mid-game joining is disabled.
+The image includes the game, Mono 6.14.1 for Apple Silicon and Mono 6.12 for Intel, five favorite-map remixes, an in-game Host/Join menu, and Quick Start.html. Each player needs their own legitimate game copy. The host sends an eight-character room code; it is both the relay room and the lobby password. No VPN, accounts, or router forwarding are needed. The host must keep the game running. Join before starting a round; mid-game joining is disabled.
 
 ## Online play
 
@@ -15,7 +15,17 @@ Duck Game's LAN mode connects every player to every other player, not only to th
 - `NCRelay.cs` subclasses the game's `NCBasic` LAN transport inside the game process. Each slot has a virtual endpoint (`10.77.0.1` host, `.2`–`.8` guests), so the addresses the host shares with guests resolve to relay slots on every Mac. The original game assembly is unchanged; `FriendsBootstrap.cs` installs the transport before hosting or joining.
 - `FriendsMenu.cs` is the first screen, drawn with the game's own menu box, font, logo and duck and driven by keyboard or controller. It generates room codes, asks the relay whether a room exists and has space, copies the host's code and reads a copied code when joining, and pins the room code to the lobby. `Launcher.swift` only installs the runtime and starts the game in `menu` mode. `DUCK_FRIENDS_RELAY=host:port` overrides the relay for testing; `DUCK_FRIENDS_TEST_MENU=host|join` presses through the menu for automated runs.
 
+## Intel Macs
+
+One universal app serves both kinds of Mac. Homebrew no longer publishes Intel builds of Mono or most libraries, so `build_intel.py` makes the Intel half separately: Mono 6.12 (with libgdiplus) from Mono's official universal installer goes into `Runtime-x86_64`, and SDL2 2.32.10, FNA3D, FAudio and Theorafile are built from source for x86_64 at the same versions the Apple Silicon build ships. `update_bundle.py` adds that runtime, merges the four game libraries into universal files with `lipo`, and builds the launcher for both architectures; the launcher starts whichever runtime matches the Mac. Intel requires macOS 11; Apple Silicon still requires macOS 15 (`LSMinimumSystemVersionByArchitecture`).
+
+    python3 build_intel.py
+    python3 update_bundle.py "<previous release>/Duck Game Friends.app" 1.4.0 5
+    python3 package_dmg.py
+
 ## Verification
+
+- 1.4.0: tested on an Apple Silicon Mac, with the Intel half running under Rosetta. Using the signed runtimes from the release build, an Intel host, an Apple Silicon guest and an Intel guest completed a match through the deployed relay. Unsigned builds also passed: an Intel host with an Apple Silicon guest, and an Apple Silicon host with two Intel guests and one Apple Silicon guest. The released app, forced to run as Intel, started the Intel runtime and reached the Friends menu. No real Intel Mac or macOS release before 15 has been tested.
 
 - 1.3.0: eight game processes completed a match through the deployed relay; four 1.2.0 processes still completed a match through the updated relay. Relay tests cover eight-slot rooms.
 - 1.2.0: one game hosted through the menu and a second joined through the menu with the code it read from the clipboard; both reached the same lobby with the room code banner shown. A join with an unknown code showed "NO ROOM WITH THAT CODE". The four-process relay match still passes with the 1.2.0 bootstrap.

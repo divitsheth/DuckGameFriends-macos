@@ -2,7 +2,7 @@
 
 [**Download the latest DMG**](https://github.com/divitsheth/DuckGameFriends-macos/releases/latest)
 
-Duck Game for **Apple Silicon Macs running macOS 15 or newer**, with an in-game menu for private 2–8 player online games using short room codes.
+Duck Game for **Apple Silicon Macs running macOS 15 or newer and Intel Macs running macOS 11 or newer**, with an in-game menu for private 2–8 player online games using short room codes.
 
 - Full original game and original maps, plus five custom remix maps.
 - Host a room, copy its room code, and join from another Mac.

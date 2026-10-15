@@ -22,7 +22,7 @@ shutil.copytree(APP,stage/APP.name,symlinks=True)
 (stage/'Applications').symlink_to('/Applications')
 shutil.copy2(ROOT/'Quick Start.html',stage/'Quick Start.html')
 version=plistlib.loads((APP/'Contents/Info.plist').read_bytes())['CFBundleShortVersionString']
-out=Path.home()/('Downloads/DuckGameFriends-'+version+'-AppleSilicon.dmg')
+out=Path.home()/('Downloads/DuckGameFriends-'+version+'.dmg')
 run('hdiutil','create','-volname','Duck Game Friends','-srcfolder',stage,'-ov','-format','UDZO',out)
 run('codesign','--sign',identity,'--timestamp',out)
 run('hdiutil','verify',out)

@@ -27,7 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) { if let game, game.isRunning { game.terminate() } }
     func focusGame() {
         guard let game, game.isRunning else { return }
-        NSRunningApplication(processIdentifier: game.processIdentifier)?.activate()
+        let app = NSRunningApplication(processIdentifier: game.processIdentifier)
+        if #available(macOS 14, *) { app?.activate() } else { app?.activate(options: []) }
     }
     func fail(_ text: String) {
         NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true)
@@ -50,7 +51,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let dest=maps.appendingPathComponent(file.lastPathComponent)
             if !fm.fileExists(atPath:dest.path) { try fm.copyItem(at:file,to:dest) }
         }
+        // Apple Silicon and Intel Macs each have their own Mono runtime (build_intel.py).
+        #if arch(x86_64)
+        let mono=resources.appendingPathComponent("Runtime-x86_64")
+        #else
         let mono=resources.appendingPathComponent("Runtime")
+        #endif
         let p=Process();p.executableURL=mono.appendingPathComponent("bin/mono-sgen")
         p.arguments=[runtime.appendingPathComponent("FriendsBootstrap.exe").path,"menu"];p.currentDirectoryURL=runtime
         var env=ProcessInfo.processInfo.environment
